@@ -1,0 +1,124 @@
+/* Custom scrollbar - macOS style, highly aesthetic & premium */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 99px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode adjustments */
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Specific styling for scrollable containers inside dialogs/modals */
+[role="dialog"] ::-webkit-scrollbar,
+.DialogContent ::-webkit-scrollbar,
+[data-state="open"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[role="dialog"] ::-webkit-scrollbar-thumb,
+.DialogContent ::-webkit-scrollbar-thumb,
+[data-state="open"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.18);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark [role="dialog"] ::-webkit-scrollbar-thumb,
+.dark .DialogContent ::-webkit-scrollbar-thumb,
+.dark [data-state="open"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+/* macOS-style Glassmorphism Backdrop for Dialog Overlays */
+[data-slot="dialog-overlay"] {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(16px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(190%) !important;
+  transition: opacity 0.35s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+/* macOS-style Spring Scale-in Animation for Dialog Content */
+[data-slot="dialog-content"] {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3) !important;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  animation-duration: 400ms !important;
+  animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+/* Specific macOS-like Dialog animations using CSS keyframes override */
+@keyframes macosScaleIn {
+  from {
+    scale: 0.93;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+@keyframes macosScaleOut {
+  from {
+    scale: 1;
+    opacity: 1;
+  }
+  to {
+    scale: 0.93;
+    opacity: 0;
+  }
+}
+
+[data-state="open"][data-slot="dialog-content"] {
+  animation: macosScaleIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+}
+
+[data-state="closed"][data-slot="dialog-content"] {
+  animation: macosScaleOut 0.28s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+}
+
+/* macOS-style spring hover animations for interactive cards, lists & buttons */
+.card, [style*="var(--card)"], tr[style*="border-bottom"] {
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s ease !important;
+}
+
+/* Sidebar navigation item transitions */
+[role="navigation"] button, 
+[role="navigation"] a,
+nav button,
+nav a {
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  border-radius: 6px !important;
+}
