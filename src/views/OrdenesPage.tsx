@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Search, Plus, X, Camera, Trash2, ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/store/AppContext";
-import { EstadoBadge, capitalizeWords } from "@/app/helpers";
+import { EstadoBadge, capitalizeWords, capitalize } from "@/app/helpers";
 import { toast } from "@/app/Toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
 import { Input } from "@/app/components/ui/input";
@@ -181,7 +181,7 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
              </div>
               <div className="mt-3 space-y-1.5">
                 <Label className="text-xs">Número de celular</Label>
-                <Input placeholder="+56 9 XXXX XXXX" value={form.numero_celular}
+                <Input placeholder="Ej. 0981 123 456" value={form.numero_celular}
                   disabled={clientLocked}
                   onChange={e => setForm({ ...form, numero_celular: e.target.value.replace(/\D/g, "") })} className="text-xs"
                  style={{ background: "var(--input)", borderColor: "var(--border)" }} />
@@ -523,8 +523,23 @@ export function OrderDetailPage() {
   ];
 
   const handleDiagnosticoSave = async (diag: Diagnostico) => {
+    const lowercaseDiag: Diagnostico = {
+      procesador: diag.procesador?.toLowerCase(),
+      memoria_ram: diag.memoria_ram?.toLowerCase(),
+      grafica: diag.grafica?.toLowerCase(),
+      almacenamientos: diag.almacenamientos?.map(a => ({
+        nombre: a.nombre?.toLowerCase(),
+        estado: a.estado?.toLowerCase(),
+      })) || [],
+      usuario_nombre: diag.usuario_nombre?.toLowerCase(),
+      usuario_informacion: diag.usuario_informacion?.toLowerCase(),
+      pico_estres_cpu: diag.pico_estres_cpu?.toLowerCase(),
+      pico_estres_gpu: diag.pico_estres_gpu?.toLowerCase(),
+      bateria: diag.bateria?.toLowerCase(),
+      solucion_propuesta: diag.solucion_propuesta?.toLowerCase(),
+    };
     await actions.updateOrden(ordenActual.id, {
-      diagnostico: diag,
+      diagnostico: lowercaseDiag,
       estado: ordenActual.garantia ? "en_proceso" : "diagnosticado",
     });
     toast.success(ordenActual.garantia ? "Diagnóstico guardado" : "Diagnóstico guardado, estado actualizado a diagnosticado");
@@ -535,7 +550,7 @@ export function OrderDetailPage() {
     const monto = Number(presupuestoMonto);
     if (!monto) { toast.info("Ingresa un monto de presupuesto"); return; }
     await actions.updateOrden(ordenActual.id, {
-      presupuesto: { monto, descripcion: presupuestoDesc },
+      presupuesto: { monto, descripcion: presupuestoDesc.toLowerCase() },
       estado: "en_espera",
     });
     toast.success("Presupuesto enviado");
@@ -553,8 +568,8 @@ export function OrderDetailPage() {
     const presupuestoOriginal = ordenActual.presupuesto;
     if (!presupuestoOriginal) return;
     const aceptado = conVariaciones
-      ? { monto: Number(variacionMonto), descripcion: variacionDesc }
-      : { monto: presupuestoOriginal.monto, descripcion: presupuestoOriginal.descripcion };
+      ? { monto: Number(variacionMonto), descripcion: variacionDesc.toLowerCase() }
+      : { monto: presupuestoOriginal.monto, descripcion: presupuestoOriginal.descripcion.toLowerCase() };
     if (conVariaciones && !Number(variacionMonto)) { toast.info("Ingresa el nuevo monto acordado"); return; }
     await actions.updateOrden(ordenActual.id, {
       respuesta_cliente: "aceptado",
@@ -631,10 +646,10 @@ export function OrderDetailPage() {
             {!ordenActual.garantia && (
               <>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                  <div><span className="text-muted-foreground">CPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.procesador}</span></div>
-                  <div><span className="text-muted-foreground">RAM:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.memoria_ram}</span></div>
-                  <div><span className="text-muted-foreground">GPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.grafica}</span></div>
-                  <div><span className="text-muted-foreground">Batería:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.bateria || "—"}</span></div>
+                  <div><span className="text-muted-foreground">CPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.procesador)}</span></div>
+                  <div><span className="text-muted-foreground">RAM:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.memoria_ram)}</span></div>
+                  <div><span className="text-muted-foreground">GPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.grafica)}</span></div>
+                  <div><span className="text-muted-foreground">Batería:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.bateria || "—")}</span></div>
                 </div>
                 {ordenActual.diagnostico.almacenamientos.length > 0 && (
                   <div className="border-t pt-2" style={{ borderColor: "var(--border)" }}>
@@ -642,24 +657,24 @@ export function OrderDetailPage() {
                     <div className="mt-1 space-y-1">
                       {ordenActual.diagnostico.almacenamientos.map((a, i) => (
                         <div key={i} className="flex items-center gap-2 ml-2">
-                          <span className="font-medium">{a.nombre}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: a.estado.toLowerCase() === "bien" ? "rgba(5,150,105,0.1)" : "rgba(217,119,6,0.1)", color: a.estado.toLowerCase() === "bien" ? "#059669" : "#D97706" }}>{a.estado}</span>
+                          <span className="font-medium">{capitalizeWords(a.nombre)}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: a.estado.toLowerCase() === "bien" ? "rgba(5,150,105,0.1)" : "rgba(217,119,6,0.1)", color: a.estado.toLowerCase() === "bien" ? "#059669" : "#D97706" }}>{capitalizeWords(a.estado)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                  <div><span className="text-muted-foreground">Usuario:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.usuario_nombre}</span></div>
-                  <div><span className="text-muted-foreground">Información:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.usuario_informacion}</span></div>
-                  <div><span className="text-muted-foreground">Pico estrés CPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.pico_estres_cpu}</span></div>
-                  <div><span className="text-muted-foreground">Pico estrés GPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.pico_estres_gpu}</span></div>
+                  <div><span className="text-muted-foreground">Usuario:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.usuario_nombre)}</span></div>
+                  <div><span className="text-muted-foreground">Información:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.usuario_informacion)}</span></div>
+                  <div><span className="text-muted-foreground">Pico estrés CPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.pico_estres_cpu)}</span></div>
+                  <div><span className="text-muted-foreground">Pico estrés GPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.pico_estres_gpu)}</span></div>
                 </div>
               </>
             )}
             <div className={`${ordenActual.garantia ? "" : "border-t pt-2"} p-3 rounded`} style={Object.assign({ background: "rgba(0,71,171,0.04)" }, ordenActual.garantia ? {} : { borderColor: "var(--border)" })}>
               <span className="font-semibold" style={{ color: "var(--primary)" }}>{ordenActual.garantia ? "Descripción y solución aplicada" : "Solución propuesta"}</span>
-              <p className="mt-1.5 leading-relaxed" style={{ color: "var(--foreground)" }}>{ordenActual.diagnostico.solucion_propuesta}</p>
+              <p className="mt-1.5 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalize(ordenActual.diagnostico.solucion_propuesta)}</p>
             </div>
             {ordenActual.garantia && ordenActual.estado === "en_proceso" && (
               <Button onClick={() => { actions.finalizarOrden(ordenActual.id, []); }} className="text-xs w-full"
@@ -682,15 +697,15 @@ export function OrderDetailPage() {
             <div className="text-xs space-y-2">
               {ordenActual.presupuesto && (
                 <div className="p-2 rounded" style={{ background: "var(--muted)" }}>
-                  Presupuesto enviado: <strong>${ordenActual.presupuesto.monto.toLocaleString()}</strong>
-                  {ordenActual.presupuesto.descripcion && <> — {ordenActual.presupuesto.descripcion}</>}
+                  Presupuesto enviado: <strong>₲ {ordenActual.presupuesto.monto.toLocaleString()}</strong>
+                  {ordenActual.presupuesto.descripcion && <> — {capitalize(ordenActual.presupuesto.descripcion)}</>}
                 </div>
               )}
               {ordenActual.respuesta_cliente && (
                 <div>Respuesta cliente: <span style={{ color: ordenActual.respuesta_cliente === "aceptado" ? "#059669" : "#DC2626" }}>{ordenActual.respuesta_cliente === "aceptado" ? "Aceptado" : "Rechazado"}</span></div>
               )}
               {ordenActual.presupuesto_aceptado && (
-                <div>Presupuesto aceptado: ${ordenActual.presupuesto_aceptado.monto.toLocaleString()}{ordenActual.presupuesto_aceptado.descripcion && <> — {ordenActual.presupuesto_aceptado.descripcion}</>}
+                <div>Presupuesto aceptado: ₲ {ordenActual.presupuesto_aceptado.monto.toLocaleString()}{ordenActual.presupuesto_aceptado.descripcion && <> — {capitalize(ordenActual.presupuesto_aceptado.descripcion)}</>}
                 </div>
               )}
               {ordenActual.estado === "en_espera" && (
@@ -713,17 +728,23 @@ export function OrderDetailPage() {
         if (ordenActual.estado === "finalizado" || ordenActual.estado === "rechazado") {
           return (
             <div className="text-xs space-y-2">
-              {ordenActual.respuesta_cliente && <div><span className="text-muted-foreground">Respuesta cliente:</span> {ordenActual.respuesta_cliente}</div>}
+              {ordenActual.respuesta_cliente && <div><span className="text-muted-foreground">Respuesta cliente:</span> {capitalizeWords(ordenActual.respuesta_cliente)}</div>}
               {ordenActual.presupuesto_aceptado && (
-                <div><span className="text-muted-foreground">Presupuesto aceptado:</span> ${ordenActual.presupuesto_aceptado.monto.toLocaleString()}
-                  {ordenActual.presupuesto_aceptado.descripcion && <> — {ordenActual.presupuesto_aceptado.descripcion}</>}
+                <div><span className="text-muted-foreground">Presupuesto aceptado:</span> ₲ {ordenActual.presupuesto_aceptado.monto.toLocaleString()}
+                  {ordenActual.presupuesto_aceptado.descripcion && <> — {capitalize(ordenActual.presupuesto_aceptado.descripcion)}</>}
                 </div>
               )}
               {ordenActual.piezas_utilizadas && ordenActual.piezas_utilizadas.length > 0 && (
                 <div><span className="text-muted-foreground">Piezas utilizadas:</span>
-                  {ordenActual.piezas_utilizadas.map((p, i) => (
-                    <div key={i} className="ml-2">{p.tipo.replace("_", " ")}: {p.especificacion}</div>
-                  ))}
+                  {ordenActual.piezas_utilizadas.map((p, i) => {
+                    const item = state.stock.find(s => s.id === p.stockItemId);
+                    const name = item ? item.name : "Pieza desconocida";
+                    return (
+                      <div key={i} className="ml-2">
+                        {capitalizeWords(name)} (x{p.quantity})
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -804,7 +825,7 @@ export function OrderDetailPage() {
             <div className="space-y-3 py-2">
               {ordenActual.presupuesto && (
                 <div className="text-xs p-2 rounded" style={{ background: "var(--muted)" }}>
-                  Presupuesto enviado: <strong>${ordenActual.presupuesto.monto.toLocaleString()}</strong>
+                  Presupuesto enviado: <strong>₲ {ordenActual.presupuesto.monto.toLocaleString()}</strong>
                   {ordenActual.presupuesto.descripcion && <> — {ordenActual.presupuesto.descripcion}</>}
                 </div>
               )}
@@ -817,7 +838,7 @@ export function OrderDetailPage() {
               </div>
               {conVariaciones && (
                 <div className="space-y-2">
-                  <Input placeholder="Nuevo monto acordado ($)" type="number" value={variacionMonto}
+                  <Input placeholder="Nuevo monto acordado (₲)" type="number" value={variacionMonto}
                     onChange={e => setVariacionMonto(e.target.value)}
                     className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                   <Textarea placeholder="Descripción de las variaciones" value={variacionDesc}
@@ -834,7 +855,7 @@ export function OrderDetailPage() {
             </div>
           ) : (
             <div className="space-y-3 py-2">
-              <Input placeholder="Monto del presupuesto ($)" type="number" value={presupuestoMonto}
+              <Input placeholder="Monto del presupuesto (₲)" type="number" value={presupuestoMonto}
                 onChange={e => setPresupuestoMonto(e.target.value)}
                 className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
               <Textarea placeholder="Descripción opcional" value={presupuestoDesc}

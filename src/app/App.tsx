@@ -136,11 +136,13 @@ function AuxModals() {
       </Dialog>
 
       <Dialog open={isAddStockOpen} onOpenChange={setIsAddStockOpen}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-          <DialogHeader><DialogTitle>Agregar Pieza al Inventario</DialogTitle></DialogHeader>
-          <div className="grid gap-3 py-2">
+        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 400 }}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Agregar Pieza al Inventario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Nombre de la pieza</Label>
+              <Label className="text-xs">Nombre de la pieza *</Label>
               <Input placeholder="Ej. Batería MacBook Pro 14" value={newStockForm.name} onChange={e => setNewStockForm({...newStockForm, name: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
             </div>
             <div className="space-y-1.5">
@@ -153,8 +155,8 @@ function AuxModals() {
                 <Input type="number" placeholder="0" value={newStockForm.stock} onChange={e => setNewStockForm({...newStockForm, stock: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Precio ($)</Label>
-                <Input type="number" placeholder="89990" value={newStockForm.price} onChange={e => setNewStockForm({...newStockForm, price: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                <Label className="text-xs">Precio (₲)</Label>
+                <Input type="number" placeholder="150000" value={newStockForm.price} onChange={e => setNewStockForm({...newStockForm, price: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
               </div>
             </div>
           </div>
