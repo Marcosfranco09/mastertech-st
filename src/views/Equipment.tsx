@@ -353,8 +353,8 @@ function ClientCard({ client, index }: { client: Client; index: number }) {
         whileHover={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
       >
         <div className="p-5">
-          <div className="flex items-start gap-4">
-            <motion.button onClick={() => setShowNotes(true)}
+          <div className="flex items-start gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+            <motion.button onClick={(e) => { e.stopPropagation(); setShowNotes(true); }}
               className="size-10 flex items-center justify-center text-sm font-bold shrink-0 rounded cursor-pointer"
               style={{ background: "var(--primary)", color: "white" }}
               whileHover={{ scale: 1.08 }}
@@ -379,13 +379,12 @@ function ClientCard({ client, index }: { client: Client; index: number }) {
                 )}
               </div>
             </div>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-1 rounded hover:bg-muted/50 transition-colors"
+            <div
+              className="p-1 rounded hover:bg-muted/50 transition-colors flex items-center justify-center"
               style={{ color: "var(--muted-foreground)" }}
             >
               <ChevronDown size={16} style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-            </button>
+            </div>
           </div>
 
           {expanded && (

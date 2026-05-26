@@ -89,7 +89,7 @@ export function Stock() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3"><span className="text-xs font-mono" style={{ color: "var(--foreground)" }}>₲ {p.price.toLocaleString()}</span></td>
+                  <td className="px-4 py-3"><span className="text-xs font-mono" style={{ color: "var(--foreground)" }}>{p.price.toLocaleString("es-PY")}₲</span></td>
                 </motion.tr>
               );
             })}

@@ -70,7 +70,7 @@ function AuxModals() {
             {[
               { label: "Nombre del taller", placeholder: "MasterTech Gamer Store" },
               { label: "Dirección", placeholder: "Av. Providencia 1234" },
-              { label: "Teléfono de contacto", placeholder: "+56 9 8821 4433" },
+              { label: "Teléfono de contacto", placeholder: "+595 981 234 567" },
             ].map(({ label, placeholder }) => (
               <div key={label} className="space-y-1.5">
                 <Label className="text-xs">{label}</Label>
@@ -115,8 +115,8 @@ function AuxModals() {
                 <Input placeholder="Nombre del cliente" value={newEqForm.client} onChange={e => setNewEqForm({...newEqForm, client: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">CI / RUT</Label>
-                <Input placeholder="12.345.678-9" value={newEqForm.ci} onChange={e => setNewEqForm({...newEqForm, ci: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                <Label className="text-xs">CI / RUC</Label>
+                <Input placeholder="Ej. 1234567-8" value={newEqForm.ci} onChange={e => setNewEqForm({...newEqForm, ci: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -136,13 +136,11 @@ function AuxModals() {
       </Dialog>
 
       <Dialog open={isAddStockOpen} onOpenChange={setIsAddStockOpen}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 400 }}>
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Agregar Pieza al Inventario</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+          <DialogHeader><DialogTitle>Agregar Pieza al Inventario</DialogTitle></DialogHeader>
+          <div className="grid gap-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Nombre de la pieza *</Label>
+              <Label className="text-xs">Nombre de la pieza</Label>
               <Input placeholder="Ej. Batería MacBook Pro 14" value={newStockForm.name} onChange={e => setNewStockForm({...newStockForm, name: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
             </div>
             <div className="space-y-1.5">
@@ -156,7 +154,7 @@ function AuxModals() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Precio (₲)</Label>
-                <Input type="number" placeholder="150000" value={newStockForm.price} onChange={e => setNewStockForm({...newStockForm, price: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                <Input type="number" placeholder="Ej. 150000" value={newStockForm.price} onChange={e => setNewStockForm({...newStockForm, price: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
               </div>
             </div>
           </div>
