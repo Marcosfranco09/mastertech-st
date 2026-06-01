@@ -4,6 +4,7 @@ import { useAppContext } from "@/store/AppContext";
 import { capitalize, capitalizeWords } from "@/app/helpers";
 import { toast } from "@/app/Toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
+import { DialogShutterBody } from "@/app/components/ShutterPanel";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Button } from "@/app/components/ui/button";
@@ -45,8 +46,8 @@ function AssemblyDetailsModal({ assembly, open, onOpenChange }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 500 }}>
-        <DialogHeader>
+      <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 500 }}>
+        <DialogHeader className="shrink-0">
           <div className="flex justify-between items-center pr-6">
             <DialogTitle className="text-base font-semibold">Detalles del Ensamble</DialogTitle>
             <span className="font-mono text-xs font-semibold px-2 py-0.5" style={{ color: "var(--primary)", background: "rgba(3, 2, 19, 0.08)" }}>
@@ -54,7 +55,8 @@ function AssemblyDetailsModal({ assembly, open, onOpenChange }: {
             </span>
           </div>
         </DialogHeader>
-        <div className="space-y-4 py-2" style={{ maxHeight: "72vh", overflowY: "auto" }}>
+        <DialogShutterBody panelKey={`${localWarranty}-${isEditing}-${isReadOnly}`} scrollClassName="overflow-y-auto py-2">
+        <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 text-xs border-b pb-3" style={{ borderColor: "var(--border)" }}>
             <div><span className="text-muted-foreground block mb-0.5">Cliente:</span><span className="font-medium text-foreground">{assembly.client}</span></div>
             <div><span className="text-muted-foreground block mb-0.5">CI / RUC:</span><span className="font-mono text-foreground">{assembly.ci}</span></div>
@@ -140,7 +142,8 @@ function AssemblyDetailsModal({ assembly, open, onOpenChange }: {
             )}
           </div>
         </div>
-        <DialogFooter className="mt-2 flex gap-2">
+        </DialogShutterBody>
+        <DialogFooter className="mt-2 flex gap-2 shrink-0">
           <Button onClick={() => onOpenChange(false)} variant="outline" className="text-xs h-9" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>Cerrar</Button>
           {!isReadOnly && (
             <Button onClick={handleSaveChanges} className="text-xs h-9" style={{ background: "var(--primary)", color: "white" }}>
@@ -227,9 +230,10 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 550 }}>
-        <DialogHeader><DialogTitle className="text-base font-semibold">Registrar Nuevo Ensamble</DialogTitle></DialogHeader>
-        <div className="space-y-4 py-2">
+      <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 550 }}>
+        <DialogHeader className="shrink-0"><DialogTitle className="text-base font-semibold">Registrar Nuevo Ensamble</DialogTitle></DialogHeader>
+        <DialogShutterBody panelKey={`${clientLocked}-${!!clientSearchQuery}`} scrollClassName="overflow-y-auto py-2">
+        <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5 relative">
               <Label className="text-xs font-medium">Cliente</Label>
@@ -323,7 +327,8 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
             <Input placeholder="Ej. Water Cooling 240mm, ventiladores adicionales..." value={formData.additional} onChange={e => setFormData({ ...formData, additional: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
           </div>
         </div>
-        <DialogFooter className="mt-4">
+        </DialogShutterBody>
+        <DialogFooter className="mt-4 shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="text-xs h-9" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>Cancelar</Button>
           <Button onClick={handleSave} className="text-xs h-9" style={{ background: "var(--primary)", color: "white" }}>Guardar Ensamble</Button>
         </DialogFooter>

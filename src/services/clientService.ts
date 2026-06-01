@@ -6,35 +6,10 @@ export async function fetchClients(): Promise<Client[]> {
   return [...clients];
 }
 
-export async function addClientEquipment(ci: string, name: string, equipment: { name: string; serial: string }, lastStatus?: string): Promise<Client> {
-  let client = clients.find(c => c.ci === ci || c.name.toLowerCase() === name.toLowerCase());
-  const status = lastStatus || 'recepcionado';
-  if (client) {
-    const existingIdx = client.equipment.findIndex(e => e.name.toLowerCase() === equipment.name.toLowerCase());
-    let newEquipment;
-    if (existingIdx >= 0) {
-      const eq = client.equipment[existingIdx];
-      newEquipment = client.equipment.map((e, i) =>
-        i === existingIdx
-          ? { ...e, serial: equipment.serial, lastOrder: equipment.serial, lastStatus: status, history: [...new Set([...e.history, equipment.serial])] }
-          : e
-      );
-    } else {
-      newEquipment = [...client.equipment, { ...equipment, lastOrder: equipment.serial, lastStatus: status, history: [equipment.serial] }];
-    }
-    client = { ...client, equipment: newEquipment };
-    clients = clients.map(c => c.ci === client!.ci ? client! : c);
-  } else {
-    client = {
-      name,
-      ci: ci || "Sin RUT",
-      numero_celular: "",
-      orders: 1,
-      equipment: [{ ...equipment, lastOrder: equipment.serial, lastStatus: status, history: [equipment.serial] }],
-    };
-    clients = [client, ...clients];
-  }
-  return client;
+export async function addClientEquipment(ci: string, name: string, equipment: any, lastStatus?: string): Promise<Client> {
+  // This function is kept for backward compatibility if needed temporarily,
+  // but we'll redirect logic to registerClient.
+  return registerClient(name, ci);
 }
 
 export async function registerClient(name: string, ci: string, numero_celular?: string): Promise<Client> {
@@ -47,12 +22,15 @@ export async function registerClient(name: string, ci: string, numero_celular?: 
     }
     return existing;
   }
+  
+  // Si no tiene CI, le asignamos un prefijo CLI-
+  const finalCi = ci || `CLI-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+  
   const newClient: Client = {
     name,
-    ci: ci || "Sin RUT",
+    ci: finalCi,
     numero_celular: numero_celular || "",
     orders: 1,
-    equipment: [],
   };
   clients = [newClient, ...clients];
   return newClient;

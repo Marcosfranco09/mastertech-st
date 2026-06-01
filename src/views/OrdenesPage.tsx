@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Search, Plus, X, Camera, Trash2, ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/store/AppContext";
-import { EstadoBadge, capitalizeWords } from "@/app/helpers";
+import { EstadoBadge, capitalizeWords, isOrdenEnTaller } from "@/app/helpers";
 import { toast } from "@/app/Toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
 import { Input } from "@/app/components/ui/input";
@@ -11,16 +11,19 @@ import { Textarea } from "@/app/components/ui/textarea";
 import { Button } from "@/app/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import type { OrdenTrabajo, Diagnostico, PiezaUtilizada } from "@/types";
+import { ShutterPanel, DialogShutterBody } from "@/app/components/ShutterPanel";
 
 const TECNICOS = ["Oscar Gomez", "Orlando Moreno", "Marcos Franco"];
 
 const FILTROS = [
+  { value: "activas", label: "Activas" },
   { value: "todas", label: "Todas" },
   { value: "recepcionado", label: "Recepcionado" },
   { value: "diagnosticado", label: "Diagnosticado" },
   { value: "en_espera", label: "En espera" },
   { value: "en_proceso", label: "En proceso" },
   { value: "finalizado", label: "Finalizado" },
+  { value: "entregado", label: "Entregado" },
   { value: "rechazado", label: "Rechazados" },
 ];
 
@@ -46,6 +49,8 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const [equipmentLocked, setEquipmentLocked] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState("");
   const [garantia, setGarantia] = useState(false);
+  const [showEquipmentSearch, setShowEquipmentSearch] = useState(false);
+  const [equipmentSearchId, setEquipmentSearchId] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const filteredClients = state.clients.filter(c =>
@@ -59,6 +64,13 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const lockedClient = clientLocked && form.ci
     ? state.clients.find(c => c.ci.toLowerCase() === form.ci.toLowerCase())
     : null;
+
+  const clientEquipments = lockedClient
+    ? state.clienteEquipos
+        .filter(ce => ce.cliente_ci === lockedClient.ci)
+        .map(ce => state.equipos.find(e => e.id === ce.equipo_id))
+        .filter(e => e !== undefined)
+    : [];
 
   useEffect(() => {
     if (!form.ci || ciFilledBySuggestion) return;
@@ -91,8 +103,12 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
       setEquipmentLocked(false);
       setSelectedEquipment("");
       setGarantia(false);
+      setShowEquipmentSearch(false);
+      setEquipmentSearchId("");
     }
   }, [open]);
+
+  const receptionShutterKey = `${showEquipmentSearch}-${clientLocked}-${selectedEquipment}-${garantia}-${lockedClient?.ci ?? ""}-${clientEquipments.length}`;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -110,24 +126,36 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
       toast.info("Completa los campos obligatorios (técnico, cliente, modelo)");
       return;
     }
+    
+    const isNew = selectedEquipment === "nuevo" || selectedEquipment === "";
+    const equipoId = isNew ? undefined : selectedEquipment;
+    const nuevoEquipoData = isNew ? {
+      marca: form.marca,
+      modelo: form.modelo,
+      tipo: (form.categoria.toLowerCase() === "notebook" || form.categoria.toLowerCase() === "pc") ? form.categoria.toLowerCase() as any : "otro",
+      notas: ""
+    } : undefined;
+
     await actions.createOrden({
       ...form,
       fotos,
       estado: "recepcionado",
       garantia,
       fecha_recepcion: new Date().toISOString(),
-    });
+    }, equipoId, nuevoEquipoData);
+    
     toast.success("Recepción registrada correctamente");
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-lg font-semibold">Recepción de equipo</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <DialogShutterBody panelKey={receptionShutterKey} scrollClassName="overflow-y-auto">
+        <div className="grid gap-4 py-1">
           <div className="space-y-1.5">
             <Label className="text-xs">Recepcionado por *</Label>
             <Select value={form.recepcionado_por} onValueChange={v => setForm({ ...form, recepcionado_por: v })}>
@@ -189,47 +217,105 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
            </div>
 
            <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <div className="text-xs font-semibold mb-3" style={{ color: "var(--foreground)" }}>Datos del equipo</div>
+            <div className="text-xs font-semibold mb-3 flex items-center justify-between" style={{ color: "var(--foreground)" }}>
+              <span>Datos del equipo</span>
+              <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-muted" onClick={() => setShowEquipmentSearch(!showEquipmentSearch)}>
+                <Plus className={`h-4 w-4 transition-transform ${showEquipmentSearch ? 'rotate-45' : ''}`} />
+              </Button>
+            </div>
 
-             {lockedClient && lockedClient.equipment.length > 0 && (
-              <div className="mb-3 space-y-1.5">
-                <Label className="text-xs">Equipo registrado</Label>
-                <Select value={selectedEquipment} onValueChange={serial => {
-                  setSelectedEquipment(serial);
-                  setEquipmentLocked(true);
-                  const eq = lockedClient.equipment.find(e => e.serial === serial);
-                  const name = eq?.name ?? "";
-                  const spaceIdx = name.indexOf(" ");
-                  if (spaceIdx > 0) {
-                    setForm(prev => ({ ...prev, marca: capitalizeWords(name.slice(0, spaceIdx)), modelo: capitalizeWords(name.slice(spaceIdx + 1)) }));
+            {showEquipmentSearch && (
+              <div className="mb-4 space-y-2 bg-muted/30 p-3 rounded-md border" style={{ borderColor: "var(--border)" }}>
+                <Label className="text-xs">Buscar equipo por ID</Label>
+                <div className="flex relative">
+                  <Input 
+                    placeholder="Escriba el ID completo (ej. MT-A1B2C3)..." 
+                    className="text-xs uppercase" 
+                    value={equipmentSearchId}
+                    onChange={e => setEquipmentSearchId(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
+                    style={{ background: "var(--input)", borderColor: "var(--border)" }}
+                  />
+                </div>
+                {equipmentSearchId.length > 0 && (() => {
+                  const searchStr = equipmentSearchId;
+                  const matchingEqs = state.equipos.filter(e => e.id.toUpperCase().includes(searchStr));
+                  if (matchingEqs.length > 0) {
+                    return (
+                      <div className="mt-2 flex flex-col max-h-48 overflow-y-auto divide-y" style={{ borderColor: "var(--border)" }}>
+                        {matchingEqs.map(foundEq => (
+                          <div
+                            key={foundEq.id}
+                            className="py-1.5 px-1 cursor-pointer hover:bg-muted/50 transition-colors flex items-center gap-2 uppercase"
+                            onClick={() => {
+                              setSelectedEquipment(foundEq.id);
+                              setEquipmentLocked(true);
+                              setForm(prev => ({ ...prev, marca: foundEq.marca, modelo: foundEq.modelo, categoria: foundEq.tipo === "otro" ? "" : (foundEq.tipo === "pc" ? "PC" : capitalizeWords(foundEq.tipo)) }));
+                              setShowEquipmentSearch(false);
+                              setEquipmentSearchId("");
+                              toast.success("Equipo seleccionado");
+                            }}
+                          >
+                            <span className="text-xs font-mono font-semibold text-primary shrink-0">{foundEq.id}</span>
+                            <span className="text-xs text-foreground">{foundEq.marca} {foundEq.modelo}</span>
+                            <span className="text-xs text-muted-foreground ml-auto shrink-0">{foundEq.tipo}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
                   } else {
-                    setForm(prev => ({ ...prev, modelo: capitalizeWords(name) }));
+                    return (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        No se encontró ningún equipo que contenga "{equipmentSearchId}"
+                      </div>
+                    );
                   }
-                  const order = state.orders.find(o => o.id === serial);
-                  if (order?.categoria) {
-                    setForm(prev => ({ ...prev, categoria: capitalizeWords(order.categoria) }));
-                  }
-                }}>
-                  <SelectTrigger className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }}>
-                    <SelectValue placeholder="Seleccionar equipo existente..." />
-                  </SelectTrigger>
-                  <SelectContent style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-                    {lockedClient.equipment.map(eq => (
-                      <SelectItem key={eq.serial} value={eq.serial} className="text-xs">{eq.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                })()}
               </div>
             )}
 
-            {selectedEquipment && (
-              <div className="mb-3 flex items-center gap-2">
-                <input type="checkbox" id="garantia" checked={garantia}
-                  onChange={e => setGarantia(e.target.checked)}
-                  className="size-4 accent-[var(--primary)]" />
-                <Label htmlFor="garantia" className="text-xs cursor-pointer">Garantía</Label>
-              </div>
-            )}
+              {lockedClient && clientEquipments.length > 0 && (
+                <div className="mb-3 flex items-end gap-4">
+                  <div className="flex-1 space-y-1.5">
+                    <Label className="text-xs">Equipo registrado</Label>
+                    <Select value={selectedEquipment} onValueChange={id => {
+                      setSelectedEquipment(id);
+                      if (id === "nuevo") {
+                        setEquipmentLocked(false);
+                        setForm(prev => ({ ...prev, marca: "", modelo: "", categoria: "" }));
+                      } else {
+                        setEquipmentLocked(true);
+                        const eq = state.equipos.find(e => e.id === id);
+                        if (eq) {
+                          setForm(prev => ({
+                            ...prev,
+                            marca: eq.marca,
+                            modelo: eq.modelo,
+                            categoria: eq.tipo === "otro" ? "" : (eq.tipo === "pc" ? "PC" : capitalizeWords(eq.tipo))
+                          }));
+                        }
+                      }
+                    }}>
+                      <SelectTrigger className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }}>
+                        <SelectValue placeholder="Seleccionar equipo existente o crear nuevo..." />
+                      </SelectTrigger>
+                      <SelectContent style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+                        <SelectItem value="nuevo" className="text-xs font-semibold" style={{ color: "var(--primary)" }}>+ Registrar equipo nuevo</SelectItem>
+                        {clientEquipments.map(eq => eq ? (
+                          <SelectItem key={eq.id} value={eq.id} className="text-xs">
+                            {eq.marca} {eq.modelo} <span className="text-[10px] text-muted-foreground ml-2">({eq.id})</span>
+                          </SelectItem>
+                        ) : null)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className={`flex items-center gap-2 h-9 pb-1 shrink-0 ${selectedEquipment && selectedEquipment !== "nuevo" ? "" : "hidden"}`}>
+                    <input type="checkbox" id="garantia" checked={garantia}
+                      onChange={e => setGarantia(e.target.checked)}
+                      className="size-4 accent-[var(--primary)] cursor-pointer" />
+                    <Label htmlFor="garantia" className="text-xs cursor-pointer">Garantía</Label>
+                  </div>
+                </div>
+              )}
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
@@ -311,7 +397,8 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
             </div>
           </div>
         </div>
-        <DialogFooter>
+        </DialogShutterBody>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
             Cancelar
           </Button>
@@ -332,35 +419,38 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
   garantia?: boolean;
 }) {
   const [form, setForm] = useState<Diagnostico>({
-    procesador: "", memoria_ram: "", grafica: "", almacenamientos: [{ nombre: "", estado: "" }],
+    procesador: "", memoria_ram: "", grafica: "", almacenamientos: [{ nombre: "", capacidad: "", letra: "", estado: "" }],
     usuario_nombre: "", usuario_informacion: "", pico_estres_cpu: "", pico_estres_gpu: "",
-    bateria: "", solucion_propuesta: "",
+    bateria: "", medicion_pila: "", estado_bateria: "", fuente_potencia: "", fuente_marca: "", observaciones: "", solucion_propuesta: "",
   });
 
   useEffect(() => {
     if (open) {
       setForm({
-        procesador: "", memoria_ram: "", grafica: "", almacenamientos: [{ nombre: "", estado: "" }],
+        procesador: "", memoria_ram: "", grafica: "", almacenamientos: [{ nombre: "", capacidad: "", letra: "", estado: "" }],
         usuario_nombre: "", usuario_informacion: "", pico_estres_cpu: "", pico_estres_gpu: "",
-        bateria: "", solucion_propuesta: "",
+        bateria: "", medicion_pila: "", estado_bateria: "", fuente_potencia: "", fuente_marca: "", observaciones: "", solucion_propuesta: "",
       });
     }
   }, [open]);
 
-  const addAlmacenamiento = () => setForm({ ...form, almacenamientos: [...form.almacenamientos, { nombre: "", estado: "" }] });
+  const addAlmacenamiento = () => setForm({ ...form, almacenamientos: [...form.almacenamientos, { nombre: "", capacidad: "", letra: "", estado: "" }] });
   const removeAlmacenamiento = (i: number) => setForm({ ...form, almacenamientos: form.almacenamientos.filter((_, idx) => idx !== i) });
-  const setAlmacenamiento = (i: number, field: 'nombre' | 'estado', value: string) => {
+  const setAlmacenamiento = (i: number, field: 'nombre' | 'capacidad' | 'letra' | 'estado', value: string) => {
     const updated = form.almacenamientos.map((a, idx) => idx === i ? { ...a, [field]: value } : a);
     setForm({ ...form, almacenamientos: updated });
   };
 
+  const diagShutterKey = `${garantia}-${esNotebook}-${form.almacenamientos.length}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-lg font-semibold">{garantia ? "Diagnóstico (Garantía)" : "Diagnóstico técnico"}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <DialogShutterBody panelKey={diagShutterKey} scrollClassName="overflow-y-auto">
+        <div className="grid gap-4 py-1">
           {!garantia && (
             <>
               <div className="grid grid-cols-3 gap-3">
@@ -368,35 +458,41 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
                   <Label className="text-xs">Procesador</Label>
                   <Input placeholder="Ej. Intel i5-1240P"
                     value={form.procesador} onChange={e => setForm({ ...form, procesador: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs capitalize" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Memoria RAM</Label>
                   <Input placeholder="Ej. 16GB DDR5"
                     value={form.memoria_ram} onChange={e => setForm({ ...form, memoria_ram: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Gráfica</Label>
                   <Input placeholder="Ej. RTX 3060"
                     value={form.grafica} onChange={e => setForm({ ...form, grafica: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">Almacenamiento/s</Label>
-                  <button onClick={addAlmacenamiento} className="text-xs text-primary hover:underline">+ Agregar</button>
+                  <button type="button" onClick={addAlmacenamiento} className="text-xs text-primary hover:underline cursor-pointer">+ Agregar</button>
                 </div>
                 {form.almacenamientos.map((a, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input placeholder="Nombre (ej. SSD NVMe 512GB)"
+                    <Input placeholder="Nombre"
                       value={a.nombre} onChange={e => setAlmacenamiento(i, 'nombre', e.target.value)}
-                      className="text-xs flex-1" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                      className="text-xs flex-1 uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    <Input placeholder="Capacidad"
+                      value={a.capacidad || ""} onChange={e => setAlmacenamiento(i, 'capacidad', e.target.value)}
+                      className="text-xs w-20 uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    <Input placeholder="Letra"
+                      value={a.letra || ""} onChange={e => setAlmacenamiento(i, 'letra', e.target.value)}
+                      className="text-xs w-16 uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                     <Input placeholder="Estado"
                       value={a.estado} onChange={e => setAlmacenamiento(i, 'estado', e.target.value)}
-                      className="text-xs w-28" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                      className="text-xs w-24 capitalize" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                     {form.almacenamientos.length > 1 && (
                       <button onClick={() => removeAlmacenamiento(i)} style={{ color: "#DC2626" }}>
                         <Trash2 size={14} />
@@ -411,13 +507,13 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
                   <Label className="text-xs">Usuario</Label>
                   <Input placeholder="Nombre"
                     value={form.usuario_nombre} onChange={e => setForm({ ...form, usuario_nombre: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs capitalize" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Información almacenada</Label>
                   <Input placeholder="Cantidad aprox."
                     value={form.usuario_informacion} onChange={e => setForm({ ...form, usuario_informacion: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs capitalize" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
               </div>
 
@@ -426,26 +522,59 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
                   <Label className="text-xs">Pico de estrés CPU</Label>
                   <Input placeholder="Ej. 85°C"
                     value={form.pico_estres_cpu} onChange={e => setForm({ ...form, pico_estres_cpu: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Pico de estrés GPU</Label>
                   <Input placeholder="Ej. 78°C"
                     value={form.pico_estres_gpu} onChange={e => setForm({ ...form, pico_estres_gpu: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                    className="text-xs uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
                 </div>
               </div>
 
-              {esNotebook && (
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Batería</Label>
-                  <Input placeholder="Estado de la batería (opcional)"
-                    value={form.bateria} onChange={e => setForm({ ...form, bateria: e.target.value })}
-                    className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                  <Label className="text-xs">Medición de pila</Label>
+                  <Input placeholder="Ej. 3.0V"
+                    value={form.medicion_pila || ""} onChange={e => setForm({ ...form, medicion_pila: e.target.value })}
+                    className="text-xs uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                </div>
+                {esNotebook ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Estado de batería</Label>
+                    <Input placeholder="Ej. Bueno, 80%"
+                      value={form.estado_bateria || form.bateria || ""} onChange={e => setForm({ ...form, estado_bateria: e.target.value, bateria: e.target.value })}
+                      className="text-xs capitalize" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fuente (Marca)</Label>
+                    <Input placeholder="Ej. Corsair"
+                      value={form.fuente_marca || ""} onChange={e => setForm({ ...form, fuente_marca: e.target.value })}
+                      className="text-xs capitalize" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                  </div>
+                )}
+              </div>
+
+              {!esNotebook && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fuente (Potencia)</Label>
+                    <Input placeholder="Ej. 650W"
+                      value={form.fuente_potencia || ""} onChange={e => setForm({ ...form, fuente_potencia: e.target.value })}
+                      className="text-xs uppercase" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+                  </div>
                 </div>
               )}
             </>
           )}
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Observaciones</Label>
+            <Textarea placeholder="Observaciones adicionales..."
+              value={form.observaciones || ""} onChange={e => setForm({ ...form, observaciones: e.target.value })}
+              className="text-xs h-16 resize-none" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
+          </div>
 
           <div className="space-y-1.5">
             <Label className="text-xs">{garantia ? "Descripción del problema y solución aplicada" : "Solución propuesta"}</Label>
@@ -454,11 +583,22 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
               className="text-xs h-20 resize-none" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
           </div>
         </div>
-        <DialogFooter>
+        </DialogShutterBody>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
             Cancelar
           </Button>
-          <Button onClick={() => { onSave(form); onOpenChange(false); }} className="text-xs" style={{ background: "var(--primary)", color: "white" }}>
+          <Button onClick={() => { 
+            const formToSave = {
+              ...form,
+              almacenamientos: form.almacenamientos.map(a => {
+                let cleanLetra = (a.letra || "").replace(/[^A-Za-z]/g, "").toUpperCase();
+                return { ...a, letra: cleanLetra ? `(:${cleanLetra})` : "" };
+              })
+            };
+            onSave(formToSave); 
+            onOpenChange(false); 
+          }} className="text-xs" style={{ background: "var(--primary)", color: "white" }}>
             Guardar diagnóstico
           </Button>
         </DialogFooter>
@@ -481,8 +621,24 @@ export function OrderDetailPage() {
   const [conVariaciones, setConVariaciones] = useState(false);
   const [variacionMonto, setVariacionMonto] = useState("");
   const [variacionDesc, setVariacionDesc] = useState("");
-  const [piezas, setPiezas] = useState<PiezaUtilizada[]>([{ stockItemId: "", quantity: 1 }]);
+  const [piezas, setPiezas] = useState<PiezaUtilizada[]>([{ stockItemId: "", quantity: 1, reemplazaA: "" }]);
   const [searchQueries, setSearchQueries] = useState<string[]>([""]);
+
+  const diagOptions = useMemo(() => {
+    if (!ordenActual?.diagnostico) return [];
+    const d = ordenActual.diagnostico;
+    const opts = [];
+    if (d.procesador) opts.push(`CPU: ${d.procesador}`);
+    if (d.memoria_ram) opts.push(`RAM: ${d.memoria_ram}`);
+    if (d.grafica) opts.push(`GPU: ${d.grafica}`);
+    if (d.estado_bateria || d.bateria) opts.push(`Batería`);
+    if (d.medicion_pila) opts.push(`Pila`);
+    if (d.fuente_potencia || d.fuente_marca) opts.push(`Fuente`);
+    d.almacenamientos.forEach(a => {
+      if (a.nombre) opts.push(`Almacenamiento: ${a.nombre}`);
+    });
+    return opts;
+  }, [ordenActual?.diagnostico]);
 
   useEffect(() => {
     if (ordenActual) {
@@ -494,7 +650,7 @@ export function OrderDetailPage() {
       setConVariaciones(false);
       setVariacionMonto("");
       setVariacionDesc("");
-      setPiezas([{ stockItemId: "", quantity: 1 }]);
+      setPiezas([{ stockItemId: "", quantity: 1, reemplazaA: "" }]);
       setSearchQueries([""]);
     }
   }, [ordenActual?.id]);
@@ -563,9 +719,9 @@ export function OrderDetailPage() {
     toast.success("Presupuesto aceptado, orden en proceso");
   };
 
-  const addPieza = () => setPiezas([...piezas, { stockItemId: "", quantity: 1 }]);
+  const addPieza = () => setPiezas([...piezas, { stockItemId: "", quantity: 1, reemplazaA: "" }]);
   const removePieza = (i: number) => setPiezas(piezas.filter((_, idx) => idx !== i));
-  const setPieza = (i: number, field: 'stockItemId' | 'quantity', value: string | number) => {
+  const setPieza = (i: number, field: 'stockItemId' | 'quantity' | 'reemplazaA', value: string | number) => {
     setPiezas(piezas.map((p, idx) => idx === i ? { ...p, [field]: value } : p));
   };
 
@@ -589,216 +745,213 @@ export function OrderDetailPage() {
           <div><span className="text-muted-foreground">Modelo:</span> {capitalizeWords(ordenActual.modelo)}</div>
           <div className="col-span-2"><span className="text-muted-foreground">Contraseña:</span> {ordenActual.contrasena_equipo || "—"}</div>
           <div className="col-span-2"><span className="text-muted-foreground">Accesorios:</span> {capitalizeWords(ordenActual.accesorios || "—")}</div>
-          {ordenActual.falla_segun_cliente && (
-            <div className="col-span-2">
-              <span className="text-muted-foreground">Falla según cliente:</span>
-              <p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.falla_segun_cliente)}</p>
-            </div>
-          )}
-          {ordenActual.solicitud_adicional && (
-            <div className="col-span-2">
-              <span className="text-muted-foreground">Solicitud adicional:</span>
-              <p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.solicitud_adicional)}</p>
-            </div>
-          )}
-          {ordenActual.fotos.length > 0 && (
-            <div className="col-span-2">
-              <span className="text-muted-foreground">Fotos:</span>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {ordenActual.fotos.map((url, i) => (
-                  <img key={i} src={url} alt="" className="size-20 object-cover border rounded" style={{ borderColor: "var(--border)" }} />
-                ))}
-              </div>
-            </div>
-          )}
+          {ordenActual.falla_segun_cliente && (<div className="col-span-2"><span className="text-muted-foreground">Falla según cliente:</span><p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.falla_segun_cliente)}</p></div>)}
+          {ordenActual.solicitud_adicional && (<div className="col-span-2"><span className="text-muted-foreground">Solicitud adicional:</span><p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.solicitud_adicional)}</p></div>)}
+          {ordenActual.fotos.length > 0 && (<div className="col-span-2"><span className="text-muted-foreground">Fotos:</span><div className="flex flex-wrap gap-2 mt-1">{ordenActual.fotos.map((url, i) => (<img key={i} src={url} alt="" className="size-20 object-cover border rounded" style={{ borderColor: "var(--border)" }} />))}</div></div>)}
         </div>
       );
       case 1: {
         if (!ordenActual.diagnostico) {
-          return (
-            <div>
-              <Button onClick={() => setShowDiagnostico(true)} className="text-xs"
-                style={{ background: "#2563EB", color: "white" }}>
-                {ordenActual.garantia ? "Realizar diagnóstico (Garantía)" : "Realizar diagnóstico"}
-              </Button>
-            </div>
-          );
+          return (<div><Button onClick={() => setShowDiagnostico(true)} className="text-xs" style={{ background: "#2563EB", color: "white" }}>{ordenActual.garantia ? "Realizar diagnóstico (Garantía)" : "Realizar diagnóstico"}</Button></div>);
         }
         return (
           <div className="text-xs space-y-3">
-            {!ordenActual.garantia && (
-              <>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                  <div><span className="text-muted-foreground">CPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.procesador)}</span></div>
-                  <div><span className="text-muted-foreground">RAM:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.memoria_ram)}</span></div>
-                  <div><span className="text-muted-foreground">GPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.grafica)}</span></div>
-                  <div><span className="text-muted-foreground">Batería:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.bateria || "—")}</span></div>
-                </div>
-                {ordenActual.diagnostico.almacenamientos.length > 0 && (
-                  <div className="border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                    <span className="text-muted-foreground">Almacenamiento:</span>
-                    <div className="mt-1 space-y-1">
-                      {ordenActual.diagnostico.almacenamientos.map((a, i) => (
-                        <div key={i} className="flex items-center gap-2 ml-2">
-                          <span className="font-medium">{a.nombre}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: a.estado.toLowerCase() === "bien" ? "rgba(5,150,105,0.1)" : "rgba(217,119,6,0.1)", color: a.estado.toLowerCase() === "bien" ? "#059669" : "#D97706" }}>{a.estado}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                  <div><span className="text-muted-foreground">Usuario:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.usuario_nombre}</span></div>
-                  <div><span className="text-muted-foreground">Información:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.usuario_informacion}</span></div>
-                  <div><span className="text-muted-foreground">Pico estrés CPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.pico_estres_cpu}</span></div>
-                  <div><span className="text-muted-foreground">Pico estrés GPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.pico_estres_gpu}</span></div>
-                </div>
-              </>
-            )}
+            {!ordenActual.garantia && (<><div className="grid grid-cols-2 gap-x-8 gap-y-2"><div><span className="text-muted-foreground">CPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.procesador)}</span></div><div><span className="text-muted-foreground">RAM:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.memoria_ram)}</span></div><div><span className="text-muted-foreground">GPU:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.grafica)}</span></div><div><span className="text-muted-foreground">Batería:</span> <span className="font-medium ml-1">{capitalizeWords(ordenActual.diagnostico.estado_bateria || ordenActual.diagnostico.bateria || "—")}</span></div><div><span className="text-muted-foreground">Pila:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.medicion_pila || "—"}</span></div><div><span className="text-muted-foreground">Fuente:</span> <span className="font-medium ml-1">{[ordenActual.diagnostico.fuente_potencia, ordenActual.diagnostico.fuente_marca].filter(Boolean).map(capitalizeWords).join(" - ") || "—"}</span></div></div>{ordenActual.diagnostico.almacenamientos.length > 0 && (<div className="border-t pt-2" style={{ borderColor: "var(--border)" }}><span className="text-muted-foreground">Almacenamiento:</span><div className="mt-1 space-y-1">{ordenActual.diagnostico.almacenamientos.map((a, i) => (<div key={i} className="flex items-center gap-2 ml-2"><span className="font-medium">{capitalizeWords(a.nombre)} {a.capacidad ? `(${a.capacidad})` : ""} {a.letra || ""}</span><span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: a.estado.toLowerCase() === "bien" ? "rgba(5,150,105,0.1)" : "rgba(217,119,6,0.1)", color: a.estado.toLowerCase() === "bien" ? "#059669" : "#D97706" }}>{capitalizeWords(a.estado)}</span></div>))}</div></div>)}<div className="grid grid-cols-2 gap-x-8 gap-y-2 border-t pt-2" style={{ borderColor: "var(--border)" }}><div><span className="text-muted-foreground">Usuario:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.usuario_nombre}</span></div><div><span className="text-muted-foreground">Información:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.usuario_informacion}</span></div><div><span className="text-muted-foreground">Pico estrés CPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.pico_estres_cpu}</span></div><div><span className="text-muted-foreground">Pico estrés GPU:</span> <span className="font-medium ml-1">{ordenActual.diagnostico.pico_estres_gpu}</span></div></div></>)}
+            {ordenActual.diagnostico.observaciones && (<div className="border-t pt-2" style={{ borderColor: "var(--border)" }}><span className="text-muted-foreground">Observaciones:</span><p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.diagnostico.observaciones)}</p></div>)}
             <div className={`${ordenActual.garantia ? "" : "border-t pt-2"} p-3 rounded`} style={Object.assign({ background: "rgba(0,71,171,0.04)" }, ordenActual.garantia ? {} : { borderColor: "var(--border)" })}>
               <span className="font-semibold" style={{ color: "var(--primary)" }}>{ordenActual.garantia ? "Descripción y solución aplicada" : "Solución propuesta"}</span>
               <p className="mt-1.5 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.diagnostico.solucion_propuesta)}</p>
             </div>
-            {ordenActual.garantia && ordenActual.estado === "en_proceso" && (
-              <Button onClick={() => { actions.finalizarOrden(ordenActual.id, []); }} className="text-xs w-full"
-                style={{ background: "#059669", color: "white" }}>Finalizado</Button>
-            )}
-            {ordenActual.garantia && ordenActual.estado === "finalizado" && (
-              <div className="flex items-center justify-center gap-2 p-4 rounded border" style={{ background: "rgba(5,150,105,0.06)", borderColor: "rgba(5,150,105,0.25)" }}>
-                <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-                <span className="text-sm font-semibold" style={{ color: "#059669" }}>Equipo finalizado</span>
-              </div>
-            )}
+            {ordenActual.garantia && ordenActual.estado === "en_proceso" && (<Button onClick={() => { actions.finalizarOrden(ordenActual.id, []); }} className="text-xs w-full" style={{ background: "#059669", color: "white" }}>Finalizado</Button>)}
+            {ordenActual.garantia && ordenActual.estado === "finalizado" && (<div className="flex items-center justify-center gap-2 p-4 rounded border" style={{ background: "rgba(5,150,105,0.06)", borderColor: "rgba(5,150,105,0.25)" }}><svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg><span className="text-sm font-semibold" style={{ color: "#059669" }}>Equipo finalizado</span></div>)}
           </div>
         );
       }
       case 2: {
-        if (ordenActual.presupuesto || ordenActual.estado === "en_espera" || ordenActual.estado === "finalizado" || ordenActual.estado === "rechazado") {
+        if (ordenActual.presupuesto || ordenActual.estado === "en_espera" || ordenActual.estado === "finalizado" || ordenActual.estado === "rechazado" || ordenActual.estado === "entregado") {
           return (
             <div className="text-xs space-y-2">
-              {ordenActual.presupuesto && (
-                <div className="p-2 rounded" style={{ background: "var(--muted)" }}>
-                  Presupuesto enviado: <strong>{ordenActual.presupuesto.monto.toLocaleString("es-PY")}₲</strong>
-                  {ordenActual.presupuesto.descripcion && <> — {capitalizeWords(ordenActual.presupuesto.descripcion)}</>}
-                </div>
-              )}
-              {ordenActual.respuesta_cliente && (
-                <div className="flex items-center gap-1.5 py-1 px-2">
-                  <span className="text-muted-foreground">Respuesta cliente:</span>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide" style={{ background: ordenActual.respuesta_cliente === "aceptado" ? "rgba(5,150,105,0.1)" : "rgba(220,38,38,0.1)", color: ordenActual.respuesta_cliente === "aceptado" ? "#059669" : "#DC2626" }}>
-                    {ordenActual.respuesta_cliente === "aceptado" ? "ACEPTADO" : "RECHAZADO"}
-                  </span>
-                </div>
-              )}
-              {ordenActual.presupuesto_aceptado && (
-                <div className="p-2 rounded" style={{ background: "var(--muted)" }}>
-                  Presupuesto aceptado: <strong>{ordenActual.presupuesto_aceptado.monto.toLocaleString("es-PY")}₲</strong>
-                  {ordenActual.presupuesto_aceptado.descripcion && <> — {capitalizeWords(ordenActual.presupuesto_aceptado.descripcion)}</>}
-                </div>
-              )}
-              {ordenActual.estado === "en_espera" && (
-                <Button onClick={() => setShowPresupuesto(true)} className="text-xs" style={{ background: "#7C3AED", color: "white" }}>
-                  Responder presupuesto
-                </Button>
-              )}
+              {ordenActual.presupuesto && (<div className="p-2 rounded" style={{ background: "var(--muted)" }}>Presupuesto enviado: <strong>{ordenActual.presupuesto.monto.toLocaleString("es-PY")}₲</strong>{ordenActual.presupuesto.descripcion && <> — {capitalizeWords(ordenActual.presupuesto.descripcion)}</>}</div>)}
+              {ordenActual.respuesta_cliente && (<div className="flex items-center gap-1.5 py-1 px-2"><span className="text-muted-foreground">Respuesta cliente:</span><span className="px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide" style={{ background: ordenActual.respuesta_cliente === "aceptado" ? "rgba(5,150,105,0.1)" : "rgba(220,38,38,0.1)", color: ordenActual.respuesta_cliente === "aceptado" ? "#059669" : "#DC2626" }}>{ordenActual.respuesta_cliente === "aceptado" ? "ACEPTADO" : "RECHAZADO"}</span></div>)}
+              {ordenActual.presupuesto_aceptado && (<div className="p-2 rounded" style={{ background: "var(--muted)" }}>Presupuesto aceptado: <strong>{ordenActual.presupuesto_aceptado.monto.toLocaleString("es-PY")}₲</strong>{ordenActual.presupuesto_aceptado.descripcion && <> — {capitalizeWords(ordenActual.presupuesto_aceptado.descripcion)}</>}</div>)}
+              {ordenActual.estado === "en_espera" && (<Button onClick={() => setShowPresupuesto(true)} className="text-xs" style={{ background: "#7C3AED", color: "white" }}>Responder presupuesto</Button>)}
             </div>
           );
         }
-        return (
-          <div>
-            <Button onClick={() => setShowPresupuesto(true)} className="text-xs" style={{ background: "#7C3AED", color: "white" }}>
-              Registrar presupuesto
-            </Button>
-          </div>
-        );
+        return (<div><Button onClick={() => setShowPresupuesto(true)} className="text-xs" style={{ background: "#7C3AED", color: "white" }}>Registrar presupuesto</Button></div>);
       }
       case 3: {
-        if (ordenActual.estado === "finalizado" || ordenActual.estado === "rechazado") {
+        if (ordenActual.estado === "finalizado" || ordenActual.estado === "entregado" || ordenActual.estado === "rechazado") {
           return (
             <div className="text-xs space-y-2">
-              {ordenActual.respuesta_cliente && (
-                <div className="flex items-center gap-1.5 py-1 px-2">
-                  <span className="text-muted-foreground">Respuesta cliente:</span>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide" style={{ background: ordenActual.respuesta_cliente === "aceptado" ? "rgba(5,150,105,0.1)" : "rgba(220,38,38,0.1)", color: ordenActual.respuesta_cliente === "aceptado" ? "#059669" : "#DC2626" }}>
-                    {ordenActual.respuesta_cliente === "aceptado" ? "ACEPTADO" : "RECHAZADO"}
-                  </span>
-                </div>
-              )}
-              {ordenActual.presupuesto_aceptado && (
-                <div className="p-2 rounded mt-2" style={{ background: "var(--muted)" }}>
-                  Presupuesto aceptado: <strong>{ordenActual.presupuesto_aceptado.monto.toLocaleString("es-PY")}₲</strong>
-                  {ordenActual.presupuesto_aceptado.descripcion && <> — {capitalizeWords(ordenActual.presupuesto_aceptado.descripcion)}</>}
-                </div>
-              )}
-              {ordenActual.piezas_utilizadas && ordenActual.piezas_utilizadas.length > 0 && (
-                <div><span className="text-muted-foreground">Piezas utilizadas:</span>
-                  {ordenActual.piezas_utilizadas.map((p, i) => {
-                    const stockItem = state.stock.find(s => s.id === p.stockItemId);
-                    return (
-                      <div key={i} className="ml-2">{capitalizeWords(stockItem?.name ?? p.stockItemId)}: {p.quantity} ud{p.quantity > 1 ? "s" : ""}</div>
-                    );
-                  })}
-                </div>
-              )}
+              {ordenActual.respuesta_cliente && (<div className="flex items-center gap-1.5 py-1"><span className="text-muted-foreground">Respuesta cliente:</span><span className="px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide" style={{ background: ordenActual.respuesta_cliente === "aceptado" ? "rgba(5,150,105,0.1)" : "rgba(220,38,38,0.1)", color: ordenActual.respuesta_cliente === "aceptado" ? "#059669" : "#DC2626" }}>{ordenActual.respuesta_cliente === "aceptado" ? "ACEPTADO" : "RECHAZADO"}</span></div>)}
+              {ordenActual.presupuesto_aceptado && (<div className="p-2 rounded mt-2" style={{ background: "var(--muted)" }}>Presupuesto aceptado: <strong>{ordenActual.presupuesto_aceptado.monto.toLocaleString("es-PY")}₲</strong>{ordenActual.presupuesto_aceptado.descripcion && <> — {capitalizeWords(ordenActual.presupuesto_aceptado.descripcion)}</>}</div>)}
+              {ordenActual.piezas_utilizadas && ordenActual.piezas_utilizadas.length > 0 && (<div className="border-t pt-2 mt-2" style={{ borderColor: "var(--border)" }}><span className="text-muted-foreground font-medium mb-1.5 block">Piezas utilizadas:</span><div className="space-y-1.5 ml-1">{ordenActual.piezas_utilizadas.map((p, i) => { const stockItem = state.stock.find(s => s.id === p.stockItemId); const itemName = (stockItem?.name ?? p.stockItemId).toUpperCase(); return (<div key={i} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--primary)" }}></div><span className="font-semibold">{itemName}</span><span className="text-muted-foreground">({p.quantity} UD{p.quantity > 1 ? "S" : ""})</span>{p.reemplazaA && <span className="text-[10px] px-1.5 py-0.5 rounded ml-1" style={{ background: "rgba(0,71,171,0.1)", color: "var(--primary)" }}>Reemplaza: {p.reemplazaA.toUpperCase()}</span>}</div>); })}</div></div>)}
             </div>
           );
         }
-        return (
-          <div>
-            <Button onClick={() => setShowFinalizacion(true)} className="text-xs" style={{ background: "#059669", color: "white" }}>
-              Agregar piezas y finalizar
-            </Button>
-          </div>
-        );
+        return (<div><Button onClick={() => setShowFinalizacion(true)} className="text-xs" style={{ background: "#059669", color: "white" }}>Agregar piezas y finalizar</Button></div>);
       }
       default: return null;
     }
   };
 
-  return (
-    <div className="flex-1 overflow-y-auto p-6" style={{ background: "var(--background)" }}>
-      <button onClick={() => navigate("/ordenes")}
-        className="flex items-center gap-1 text-xs mb-4 transition-colors hover:text-primary"
-        style={{ color: "var(--muted-foreground)" }}>
-        <ArrowLeft size={14} /> Volver a órdenes
-      </button>
+  const handleEntregar = async () => {
+    if (ordenActual.estado !== "finalizado") return;
+    await actions.updateOrden(ordenActual.id, { estado: "entregado" });
+    toast.success("Equipo marcado como entregado");
+  };
 
-      <div className="border rounded p-4 mb-4" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-semibold" style={{ color: "var(--foreground)" }}>{ordenActual.nombre_cliente}</span>
-              <span className="font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>#{ordenActual.id.slice(0, 8)}</span>
-            </div>
-            <div className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-              {ordenActual.marca} {ordenActual.modelo}{ordenActual.falla_segun_cliente ? ` · "${ordenActual.falla_segun_cliente}"` : ""}
-            </div>
-          </div>
-          <EstadoBadge estado={ordenActual.estado} />
-        </div>
+  // Resolve linked client and equipo for the sidebar
+  const linkedEquipo = ordenActual.equipo_id ? state.equipos.find(e => e.id === ordenActual.equipo_id) : null;
+  const linkedClient = ordenActual.ci ? state.clients.find(c => c.ci === ordenActual.ci) : null;
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col" style={{ background: "var(--background)" }}>
+
+      {/* Top bar: back button */}
+      <div className="px-6 pt-5 pb-2">
+        <button type="button" onClick={() => navigate("/ordenes")}
+          className="flex items-center gap-1.5 text-xs transition-colors hover:text-primary cursor-pointer"
+          style={{ color: "var(--muted-foreground)" }}>
+          <ArrowLeft size={13} /> Volver a órdenes
+        </button>
       </div>
 
-      <div className="flex items-center gap-0 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
-        {steps.map((s, i) => (
-          <button
-            key={s.key}
-            onClick={() => setStep(i)}
-            className={`px-4 py-2 text-xs font-medium transition-colors relative ${i === step ? "" : "hover:bg-muted/40"}`}
+      {/* Main: left (problema + proceso) | right (cliente, equipo, orden) */}
+      <div className="flex flex-1 gap-6 px-6 pb-6 min-h-0 overflow-hidden">
+
+        {/* Left: problema reportado + flujo de trabajo */}
+        <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
+          <div
+            className="rounded border p-4 shrink-0"
             style={{
-              color: i === step ? "var(--primary)" : "var(--foreground)",
-              cursor: "pointer",
-              borderBottom: i === step ? "2px solid var(--primary)" : "2px solid transparent",
+              background: "var(--card)",
+              borderColor: "var(--border)",
+              borderLeft: "3px solid var(--primary)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
             }}
           >
-            {s.label}
-          </button>
-        ))}
-      </div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: "var(--primary)" }}>
+              Problema reportado
+            </div>
+            <div className="text-base font-semibold leading-snug" style={{ color: "var(--foreground)" }}>
+              {ordenActual.falla_segun_cliente
+                ? capitalizeWords(ordenActual.falla_segun_cliente)
+                : "Sin descripción de falla"}
+            </div>
+          </div>
 
-      <div className="border rounded p-4" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-        {renderStep()}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div
+              className="rounded border overflow-hidden"
+              style={{ background: "var(--card)", borderColor: "var(--border)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+            >
+              <div className="flex items-center gap-0 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
+                {steps.map((s, i) => (
+                  <button
+                    key={s.key}
+                    onClick={() => setStep(i)}
+                    className="px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer"
+                    style={{
+                      color: i === step ? "var(--primary)" : "var(--muted-foreground)",
+                      background: "transparent",
+                      outline: "none",
+                      border: "none",
+                      borderBottom: i === step ? "2px solid var(--primary)" : "2px solid transparent",
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <ShutterPanel panelKey={step}>
+                <div className="p-5">{renderStep()}</div>
+              </ShutterPanel>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: cliente, equipo y orden */}
+        <div className="w-[340px] shrink-0 overflow-y-auto space-y-3">
+
+          <div className="rounded border p-4 space-y-2" style={{ background: "var(--card)", borderColor: "var(--border)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+            <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "var(--muted-foreground)" }}>Cliente</div>
+            <div className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
+              {linkedClient ? linkedClient.name : capitalizeWords(ordenActual.nombre_cliente)}
+            </div>
+            <div className="text-xs font-mono" style={{ color: "var(--muted-foreground)" }}>CI: {ordenActual.ci || "—"}</div>
+            {ordenActual.numero_celular && (
+              <div className="text-xs flex items-center gap-1.5" style={{ color: "var(--foreground)" }}>
+                <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 11 19.79 19.79 0 0 1 1.07 2.35 2 2 0 0 1 3.04.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 14.92v2z"/></svg>
+                {ordenActual.numero_celular}
+              </div>
+            )}
+          </div>
+
+          {/* Equipment card */}
+          <div className="rounded border p-4 space-y-2.5" style={{ background: "var(--card)", borderColor: "var(--border)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+            <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "var(--muted-foreground)" }}>Equipo</div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between gap-2">
+                <span style={{ color: "var(--muted-foreground)" }}>Marca</span>
+                <span className="font-medium text-right" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.marca || "—")}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span style={{ color: "var(--muted-foreground)" }}>Modelo</span>
+                <span className="font-medium text-right" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.modelo)}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span style={{ color: "var(--muted-foreground)" }}>ID</span>
+                <span className="font-mono font-semibold" style={{ color: "var(--primary)" }}>
+                  {linkedEquipo?.id || ordenActual.equipo_id || "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Order card + entrega */}
+          <div className="rounded border overflow-hidden" style={{ background: "var(--card)", borderColor: "var(--border)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+            <div className="p-4 space-y-2.5">
+              <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "var(--muted-foreground)" }}>Orden</div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between gap-2">
+                  <span style={{ color: "var(--muted-foreground)" }}>Número</span>
+                  <span className="font-mono font-semibold" style={{ color: "var(--primary)" }}>#{ordenActual.id.slice(0, 8)}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span style={{ color: "var(--muted-foreground)" }}>Fecha ingreso</span>
+                  <span style={{ color: "var(--foreground)" }}>{new Date(ordenActual.fecha_recepcion).toLocaleDateString("es-ES")}</span>
+                </div>
+                <div className="flex justify-between gap-2 items-center">
+                  <span style={{ color: "var(--muted-foreground)" }}>Estado</span>
+                  <EstadoBadge estado={ordenActual.estado} />
+                </div>
+              </div>
+            </div>
+            {ordenActual.estado === "finalizado" && (
+              <button
+                type="button"
+                onClick={handleEntregar}
+                className="w-full py-2.5 text-sm font-semibold border-t transition-opacity hover:opacity-90 cursor-pointer"
+                style={{ background: "var(--primary)", color: "white", borderColor: "var(--border)" }}
+              >
+                Marcar como entregado
+              </button>
+            )}
+            {ordenActual.estado === "entregado" && (
+              <div
+                className="flex items-center justify-center gap-2 py-2.5 border-t text-sm font-semibold"
+                style={{ background: "rgba(8,145,178,0.06)", borderColor: "rgba(8,145,178,0.25)", color: "#0891B2" }}
+              >
+                <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+                Equipo entregado
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <DiagnosticoModal
@@ -810,14 +963,15 @@ export function OrderDetailPage() {
       />
 
       <Dialog open={showPresupuesto} onOpenChange={setShowPresupuesto}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 450 }}>
-          <DialogHeader>
+        <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 450 }}>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="text-base font-semibold">
               {ordenActual.estado === "en_espera" ? "Responder presupuesto" : "Registrar presupuesto"}
             </DialogTitle>
           </DialogHeader>
+          <DialogShutterBody panelKey={ordenActual.estado === "en_espera" ? `resp-${conVariaciones}` : "reg"} scrollClassName="py-1">
           {ordenActual.estado === "en_espera" ? (
-            <div className="space-y-3 py-2">
+            <div className="space-y-3">
               {ordenActual.presupuesto && (
                 <div className="text-xs p-2 rounded" style={{ background: "var(--muted)" }}>
                   Presupuesto enviado: <strong>{ordenActual.presupuesto.monto.toLocaleString("es-PY")}₲</strong>
@@ -866,80 +1020,109 @@ export function OrderDetailPage() {
                 style={{ background: "#7C3AED", color: "white" }}>Registrar presupuesto</Button>
             </div>
           )}
+          </DialogShutterBody>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showFinalizacion} onOpenChange={setShowFinalizacion}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 450 }}>
-          <DialogHeader>
+        <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)", maxWidth: 450 }}>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="text-base font-semibold">Finalizar orden</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <DialogShutterBody panelKey={`fin-${piezas.length}`} scrollClassName="py-1">
+          <div className="space-y-3">
             {piezas.map((p, i) => {
               const selected = state.stock.find(s => s.id === p.stockItemId);
-              const sq = searchQueries[i] ?? "";
+              const sq = searchQueries[i] ?? (selected?.name || "");
               return (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="relative flex-1">
+                <div key={i} className="border p-2 rounded flex flex-col gap-2" style={{ borderColor: "var(--border)" }}>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Buscar producto en stock..."
+                        value={sq}
+                        onChange={e => {
+                          setSearchQuery(i, e.target.value);
+                          if (p.stockItemId) setPieza(i, 'stockItemId', "");
+                        }}
+                        className="w-full pl-2 pr-2 py-1.5 text-xs border outline-none"
+                        style={{ background: "var(--input)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                      />
+                      {sq && !p.stockItemId && (
+                        <div className="absolute top-full left-0 right-0 z-10 max-h-32 overflow-y-auto border"
+                          style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+                          {state.stock.filter(s => s.name.toLowerCase().includes(sq.toLowerCase())).map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => { setPieza(i, 'stockItemId', s.id); setSearchQuery(i, s.name.toUpperCase()); }}
+                              className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted transition-colors font-medium"
+                              style={{ color: "var(--foreground)" }}
+                            >{s.name.toUpperCase()} <span className="text-muted-foreground font-normal">({s.stock} ud{s.stock !== 1 ? "s" : ""})</span></button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {selected && (
+                      <span className="text-[10px] shrink-0" style={{ color: "var(--muted-foreground)" }}>{selected.stock} disp.</span>
+                    )}
                     <input
-                      type="text"
-                      placeholder="Buscar producto en stock..."
-                      value={sq}
-                      onChange={e => setSearchQuery(i, e.target.value)}
-                      className="w-full pl-2 pr-2 py-1.5 text-xs border outline-none"
+                      type="number"
+                      min={1}
+                      max={selected?.stock || 1}
+                      value={p.quantity}
+                      onChange={e => setPieza(i, 'quantity', Math.max(1, Math.min(selected?.stock || 99, Number(e.target.value))))}
+                      className="w-14 text-xs py-1.5 text-center border"
                       style={{ background: "var(--input)", borderColor: "var(--border)", color: "var(--foreground)" }}
                     />
-                    {sq && (
-                      <div className="absolute top-full left-0 right-0 z-10 max-h-32 overflow-y-auto border"
-                        style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-                        {state.stock.filter(s => s.name.toLowerCase().includes(sq.toLowerCase())).map(s => (
-                          <button
-                            key={s.id}
-                            onClick={() => { setPieza(i, 'stockItemId', s.id); setSearchQuery(i, ""); }}
-                            className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted transition-colors"
-                            style={{ color: "var(--foreground)" }}
-                          >{s.name} <span className="text-muted-foreground">({s.stock} uds)</span></button>
-                        ))}
-                      </div>
+                    {piezas.length > 1 && (
+                      <button onClick={() => removePieza(i)} style={{ color: "#DC2626" }}><Trash2 size={14} /></button>
                     )}
                   </div>
-                  {selected && (
-                    <span className="text-[10px] shrink-0" style={{ color: "var(--muted-foreground)" }}>{selected.stock} disp.</span>
-                  )}
-                  <input
-                    type="number"
-                    min={1}
-                    max={selected?.stock || 1}
-                    value={p.quantity}
-                    onChange={e => setPieza(i, 'quantity', Math.max(1, Math.min(selected?.stock || 99, Number(e.target.value))))}
-                    className="w-14 text-xs py-1.5 text-center border"
-                    style={{ background: "var(--input)", borderColor: "var(--border)", color: "var(--foreground)" }}
-                  />
-                  {piezas.length > 1 && (
-                    <button onClick={() => removePieza(i)} style={{ color: "#DC2626" }}><Trash2 size={14} /></button>
+                  {diagOptions.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] w-16" style={{ color: "var(--muted-foreground)" }}>Reemplaza:</span>
+                      <Select value={p.reemplazaA || "ninguno"} onValueChange={v => setPieza(i, 'reemplazaA', v === "ninguno" ? "" : v)}>
+                        <SelectTrigger className="h-7 text-[10px] flex-1" style={{ background: "var(--input)", borderColor: "var(--border)" }}>
+                          <SelectValue placeholder="Opcional..." />
+                        </SelectTrigger>
+                        <SelectContent style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+                          <SelectItem value="ninguno" className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>Ninguno</SelectItem>
+                          {diagOptions.map(opt => (
+                            <SelectItem key={opt} value={opt} className="text-[10px]">{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
                 </div>
               );
             })}
-            <button onClick={addPieza} className="text-xs text-primary hover:underline">+ Agregar pieza</button>
+            <button type="button" onClick={addPieza} className="text-xs text-primary hover:underline cursor-pointer">+ Agregar pieza</button>
             <Button onClick={() => { handleFinalizar(); setShowFinalizacion(false); }} className="text-xs w-full"
               style={{ background: "#059669", color: "white" }}>Finalizar orden</Button>
           </div>
+          </DialogShutterBody>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
+
+
 export function OrdenesPage() {
   const { state } = useAppContext();
   const navigate = useNavigate();
   const [showReception, setShowReception] = useState(false);
-  const [filter, setFilter] = useState("todas");
+  const [filter, setFilter] = useState("activas");
   const [q, setQ] = useState("");
 
   const filtered = state.orders.filter(o => {
-    const matchEstado = filter === "todas" || o.estado === filter;
+    const matchEstado =
+      filter === "todas"
+      || (filter === "activas" && isOrdenEnTaller(o.estado))
+      || o.estado === filter;
     const matchQ = !q
       || o.nombre_cliente.toLowerCase().includes(q.toLowerCase())
       || o.modelo.toLowerCase().includes(q.toLowerCase())
@@ -968,7 +1151,7 @@ export function OrdenesPage() {
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
-              className="px-3 py-1.5 text-xs font-medium transition-all border"
+              className="px-3 py-1.5 text-xs font-medium transition-all border cursor-pointer"
               style={{
                 background: filter === f.value ? "var(--primary)" : "var(--card)",
                 color: filter === f.value ? "white" : "var(--muted-foreground)",
@@ -1066,3 +1249,4 @@ export function OrdenesPage() {
     </div>
   );
 }
+

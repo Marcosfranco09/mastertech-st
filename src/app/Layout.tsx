@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { LayoutDashboard, ClipboardList, Monitor, Package, Layers, ChevronUp } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "@/store/AppContext";
-import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
+import { ImageWithFallback } from "@/app/components/ui/ImageWithFallback";
 import logoImg from "@/imports/473046427_917832650556773_1093528259182468086_n.png";
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Panel",     icon: LayoutDashboard, path: "/" },
-  { id: "orders",    label: "Órdenes",   icon: ClipboardList,   path: "/ordenes" },
-  { id: "equipment", label: "Clientes",  icon: Monitor,         path: "/equipos" },
-  { id: "stock",     label: "Stock",     icon: Package,         path: "/stock" },
-  { id: "assemblies",label: "Ensambles", icon: Layers,          path: "/ensambles" },
+  { id: "dashboard", label: "Panel",     path: "/" },
+  { id: "orders",    label: "Órdenes",   path: "/ordenes" },
+  { id: "equipment", label: "Clientes y Equipos",  path: "/equipos" },
+  { id: "stock",     label: "Stock",     path: "/stock" },
+  { id: "assemblies",label: "Ensambles", path: "/ensambles" },
 ];
 
 const stagger = {
@@ -54,8 +54,8 @@ function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col w-[220px] min-h-screen shrink-0 border-r"
-      style={{ background: "var(--sidebar)", borderColor: "var(--sidebar-border)" }}
+      className="flex flex-col w-[220px] min-h-screen shrink-0"
+      style={{ background: "var(--sidebar)" }}
     >
       <div className="flex items-center justify-center px-4 py-4 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
         <ImageWithFallback
@@ -67,28 +67,34 @@ function Sidebar() {
       </div>
 
       <motion.nav
-        className="flex-1 px-3 py-4 space-y-0.5"
+        className="flex-1 py-4 space-y-0.5"
         variants={stagger}
         initial="hidden"
         animate="visible"
       >
-        {NAV_ITEMS.map(({ id, label, icon: Icon, path }) => {
+        {NAV_ITEMS.map(({ id, label, path }) => {
           const active = activeId === id;
           return (
-            <motion.button
-              key={id}
-              variants={sidebarItem}
-              onClick={() => navigate(path)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-all duration-150"
-              whileHover={{ x: 4 }}
-              style={{
-                background: active ? "var(--sidebar-accent)" : "transparent",
-                color: active ? "var(--sidebar-accent-foreground)" : "var(--sidebar-foreground)",
-              }}
-            >
-              <Icon size={15} />
-              {label}
-            </motion.button>
+            <motion.div key={id} variants={sidebarItem} className="w-full relative">
+              <button
+                onClick={() => navigate(path)}
+                className="nav-item relative"
+                data-active={active ? "true" : "false"}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="sidebarActiveBackground"
+                    className="absolute inset-0"
+                    style={{
+                      background: "var(--background)",
+                      borderLeft: "3px solid white"
+                    }}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10 w-full">{label}</span>
+              </button>
+            </motion.div>
           );
         })}
       </motion.nav>
@@ -236,8 +242,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header title={title} />
-        <main className="flex flex-1 min-h-0 overflow-hidden" style={{ background: "var(--background)" }}>
-          {children}
+        <main className="flex flex-1 min-h-0 overflow-hidden relative" style={{ background: "var(--background)" }}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, scale: 0.97, x: -15, filter: "blur(2px)" }}
+            animate={{ opacity: 1, scale: 1, x: 0, filter: "blur(0px)" }}
+            transition={{ type: "spring", stiffness: 450, damping: 30, mass: 0.8 }}
+            className="flex-1 w-full h-full flex flex-col overflow-hidden"
+            style={{ transformOrigin: "left center" }}
+          >
+            {children}
+          </motion.div>
         </main>
       </div>
     </div>

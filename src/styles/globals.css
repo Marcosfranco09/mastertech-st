@@ -120,5 +120,51 @@
 nav button,
 nav a {
   transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1) !important;
-  border-radius: 6px !important;
+}
+
+/* Sidebar nav item */
+.nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  border-radius: 0;
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.18s ease, border-left-color 0.18s ease, color 0.18s ease;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-left-color: white;
+}
+
+.nav-item[data-active="true"] {
+  color: var(--primary);
+  font-weight: 700;
+  border-left-color: transparent;
+}
+
+/* Cursor en controles interactivos */
+button:not(:disabled):not([disabled]),
+a[href],
+label[for],
+select,
+[role="button"]:not([disabled]):not([aria-disabled="true"]),
+[role="tab"],
+[role="menuitem"],
+.cursor-pointer {
+  cursor: pointer;
+}
+
+button:disabled,
+[disabled],
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }

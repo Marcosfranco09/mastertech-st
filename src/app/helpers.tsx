@@ -1,4 +1,15 @@
 import { Search, Wrench, Clock, CheckCircle2, AlertCircle, Laptop, Monitor, Gamepad2 } from "lucide-react";
+import type { EstadoOrden } from "@/types";
+
+/** Cuenta en KPI «órdenes activas» (en curso; sin finalizar, entregar ni rechazar) */
+export function isOrdenActiva(estado: EstadoOrden | string): boolean {
+  return estado !== "finalizado" && estado !== "entregado" && estado !== "rechazado";
+}
+
+/** Visible en listados «Activas» (incluye finalizado pendiente de entrega al cliente) */
+export function isOrdenEnTaller(estado: EstadoOrden | string): boolean {
+  return estado !== "entregado" && estado !== "rechazado";
+}
 
 export const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   recepcionado:  { label: "Recepcionado",  color: "#64748B", bg: "rgba(100,116,139,0.1)" },
@@ -6,6 +17,7 @@ export const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: s
   en_espera:     { label: "En espera",     color: "#D97706", bg: "rgba(217,119,6,0.1)"   },
   en_proceso:    { label: "En proceso",    color: "#EA580C", bg: "rgba(234,88,12,0.1)"   },
   finalizado:    { label: "Finalizado",    color: "#059669", bg: "rgba(5,150,105,0.1)"   },
+  entregado:     { label: "Entregado",     color: "#0891B2", bg: "rgba(8,145,178,0.1)"   },
   rechazado:     { label: "Rechazado",     color: "#DC2626", bg: "rgba(220,38,38,0.1)"   },
 };
 

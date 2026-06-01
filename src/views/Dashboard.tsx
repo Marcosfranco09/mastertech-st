@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Activity, Search, CheckCircle2, Box, ArrowUpRight, Laptop, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAppContext } from "@/store/AppContext";
-import { EstadoBadge, KPICard } from "@/app/helpers";
+import { EstadoBadge, KPICard, isOrdenActiva, isOrdenEnTaller } from "@/app/helpers";
 import { ReceptionModal } from "./OrdenesPage";
 
 const fadeUp = {
@@ -21,12 +21,12 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [showReception, setShowReception] = useState(false);
 
-  const activas = state.orders.filter(o => o.estado !== "finalizado" && o.estado !== "rechazado");
+  const activas = state.orders.filter(o => isOrdenActiva(o.estado));
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const recent = state.orders
-    .filter(o => new Date(o.fecha_recepcion) >= sevenDaysAgo)
+    .filter(o => isOrdenEnTaller(o.estado) && new Date(o.fecha_recepcion) >= sevenDaysAgo)
     .sort((a, b) => new Date(b.fecha_recepcion).getTime() - new Date(a.fecha_recepcion).getTime())
     .slice(0, 8);
 

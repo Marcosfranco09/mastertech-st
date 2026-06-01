@@ -9,6 +9,7 @@ import { Equipment } from "@/views/Equipment";
 import { Stock } from "@/views/Stock";
 import { Assemblies } from "@/views/Assemblies";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
+import { DialogShutterBody } from "@/app/components/ShutterPanel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/app/components/ui/alert-dialog";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
@@ -64,9 +65,10 @@ function AuxModals() {
   return (
     <>
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-          <DialogHeader><DialogTitle>Configuración del Sistema</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
+        <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+          <DialogHeader className="shrink-0"><DialogTitle>Configuración del Sistema</DialogTitle></DialogHeader>
+          <DialogShutterBody panelKey="settings" scrollClassName="py-2">
+          <div className="space-y-4">
             {[
               { label: "Nombre del taller", placeholder: "MasterTech Gamer Store" },
               { label: "Dirección", placeholder: "Av. Providencia 1234" },
@@ -78,7 +80,8 @@ function AuxModals() {
               </div>
             ))}
           </div>
-          <DialogFooter>
+          </DialogShutterBody>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setIsSettingsOpen(false)} style={{ borderColor: "var(--border)" }}>Cancelar</Button>
             <Button onClick={() => { toast.success("Configuración guardada"); setIsSettingsOpen(false); }} style={{ background: "var(--primary)", color: "white" }}>Guardar</Button>
           </DialogFooter>
@@ -86,9 +89,10 @@ function AuxModals() {
       </Dialog>
 
       <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-          <DialogHeader><DialogTitle>Notificaciones</DialogTitle></DialogHeader>
-          <div className="space-y-2 py-2">
+        <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+          <DialogHeader className="shrink-0"><DialogTitle>Notificaciones</DialogTitle></DialogHeader>
+          <DialogShutterBody panelKey="notifications" scrollClassName="py-2">
+          <div className="space-y-2">
             {[
               { msg: "OT-2838 marcada como URGENTE", time: "Hace 5 min", color: "#DC2626" },
               { msg: "Pieza BAT-MBP14-22 con stock bajo", time: "Hace 1 hora", color: "#D97706" },
@@ -102,13 +106,15 @@ function AuxModals() {
               </div>
             ))}
           </div>
+          </DialogShutterBody>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isRegisterEqOpen} onOpenChange={setIsRegisterEqOpen}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-          <DialogHeader><DialogTitle>Registrar Equipo</DialogTitle></DialogHeader>
-          <div className="grid gap-3 py-2">
+        <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+          <DialogHeader className="shrink-0"><DialogTitle>Registrar Equipo</DialogTitle></DialogHeader>
+          <DialogShutterBody panelKey="register-eq" scrollClassName="py-2">
+          <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Cliente</Label>
@@ -128,7 +134,8 @@ function AuxModals() {
               <Input placeholder="Serial del equipo" value={newEqForm.serial} onChange={e => setNewEqForm({...newEqForm, serial: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
             </div>
           </div>
-          <DialogFooter>
+          </DialogShutterBody>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setIsRegisterEqOpen(false)} style={{ borderColor: "var(--border)" }}>Cancelar</Button>
             <Button onClick={() => { toast.success("Equipo registrado correctamente"); setIsRegisterEqOpen(false); setNewEqForm({ client:"", ci:"", equipment:"", serial:"" }); }} style={{ background: "var(--primary)", color: "white" }}>Registrar</Button>
           </DialogFooter>
@@ -136,9 +143,10 @@ function AuxModals() {
       </Dialog>
 
       <Dialog open={isAddStockOpen} onOpenChange={setIsAddStockOpen}>
-        <DialogContent style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-          <DialogHeader><DialogTitle>Agregar Pieza al Inventario</DialogTitle></DialogHeader>
-          <div className="grid gap-3 py-2">
+        <DialogContent className="overflow-hidden flex flex-col gap-4" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+          <DialogHeader className="shrink-0"><DialogTitle>Agregar Pieza al Inventario</DialogTitle></DialogHeader>
+          <DialogShutterBody panelKey="add-stock" scrollClassName="py-2">
+          <div className="grid gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Nombre de la pieza</Label>
               <Input placeholder="Ej. Batería MacBook Pro 14" value={newStockForm.name} onChange={e => setNewStockForm({...newStockForm, name: e.target.value})} className="text-xs" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
@@ -158,7 +166,8 @@ function AuxModals() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          </DialogShutterBody>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setIsAddStockOpen(false)} style={{ borderColor: "var(--border)" }}>Cancelar</Button>
             <Button onClick={async () => {
               if (!newStockForm.name.trim() || !newStockForm.stock || !newStockForm.price) { toast.info("Completa todos los campos"); return; }

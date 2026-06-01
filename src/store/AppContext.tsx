@@ -1,14 +1,17 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
-import { OrdenTrabajo, Order, Client, StockItem, Assembly } from '@/types';
+import { OrdenTrabajo, Order, Client, StockItem, Assembly, Equipo, ClienteEquipo } from '@/types';
 import * as orderService from '@/services/orderService';
 import * as stockService from '@/services/stockService';
 import * as clientService from '@/services/clientService';
 import * as assemblyService from '@/services/assemblyService';
+import * as equipmentService from '@/services/equipmentService';
 
 interface AppState {
   orders: OrdenTrabajo[];
   equiposFinalizados: OrdenTrabajo[];
   clients: Client[];
+  equipos: Equipo[];
+  clienteEquipos: ClienteEquipo[];
   stock: StockItem[];
   assemblies: Assembly[];
   loading: boolean;
@@ -24,6 +27,11 @@ type Action =
   | { type: 'UPSERT_CLIENT'; payload: Client }
   | { type: 'ADD_CLIENT'; payload: Client }
   | { type: 'UPDATE_CLIENT'; payload: { ci: string; fields: Partial<Client> } }
+  | { type: 'SET_EQUIPOS'; payload: Equipo[] }
+  | { type: 'ADD_EQUIPO'; payload: Equipo }
+  | { type: 'UPDATE_EQUIPO'; payload: { id: string; fields: Partial<Equipo> } }
+  | { type: 'SET_CLIENTE_EQUIPOS'; payload: ClienteEquipo[] }
+  | { type: 'ADD_CLIENTE_EQUIPO'; payload: ClienteEquipo }
   | { type: 'SET_STOCK'; payload: StockItem[] }
   | { type: 'ADD_STOCK'; payload: StockItem }
   | { type: 'SUBTRACT_STOCK'; payload: { id: string; fields: Partial<StockItem> } }
@@ -36,6 +44,8 @@ const initialState: AppState = {
   orders: [],
   equiposFinalizados: [],
   clients: [],
+  equipos: [],
+  clienteEquipos: [],
   stock: [],
   assemblies: [],
   loading: true,
@@ -43,65 +53,55 @@ const initialState: AppState = {
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case 'SET_ORDERS':
-      return { ...state, orders: action.payload };
-    case 'ADD_ORDER':
-      return { ...state, orders: [action.payload, ...state.orders] };
-    case 'UPDATE_ORDER':
-      return {
-        ...state,
-        orders: state.orders.map(o =>
-          o.id === action.payload.id ? { ...o, ...action.payload.fields } : o
-        ),
-      };
-    case 'REMOVE_ORDER':
-      return { ...state, orders: state.orders.filter(o => o.id !== action.payload) };
-    case 'ADD_EQUIPO_FINALIZADO':
-      return { ...state, equiposFinalizados: [action.payload, ...state.equiposFinalizados] };
-    case 'SET_CLIENTS':
-      return { ...state, clients: action.payload };
+    case 'SET_ORDERS': return { ...state, orders: action.payload };
+    case 'ADD_ORDER': return { ...state, orders: [action.payload, ...state.orders] };
+    case 'UPDATE_ORDER': return {
+      ...state, orders: state.orders.map(o => o.id === action.payload.id ? { ...o, ...action.payload.fields } : o),
+    };
+    case 'REMOVE_ORDER': return { ...state, orders: state.orders.filter(o => o.id !== action.payload) };
+    case 'ADD_EQUIPO_FINALIZADO': return { ...state, equiposFinalizados: [action.payload, ...state.equiposFinalizados] };
+    
+    case 'SET_CLIENTS': return { ...state, clients: action.payload };
     case 'UPSERT_CLIENT':
       return {
         ...state,
-        clients: state.clients.some(c => c.ci === action.payload.ci || c.name === action.payload.name)
-          ? state.clients.map(c => (c.ci === action.payload.ci || c.name === action.payload.name) ? action.payload : c)
+        clients: state.clients.some(c => c.ci === action.payload.ci)
+          ? state.clients.map(c => c.ci === action.payload.ci ? action.payload : c)
           : [action.payload, ...state.clients],
       };
-    case 'ADD_CLIENT':
-      return { ...state, clients: [action.payload, ...state.clients] };
-    case 'UPDATE_CLIENT':
-      return {
-        ...state,
-        clients: state.clients.map(c =>
-          c.ci === action.payload.ci ? { ...c, ...action.payload.fields } : c
-        ),
-      };
-    case 'SET_STOCK':
-      return { ...state, stock: action.payload };
-    case 'ADD_STOCK':
-      return { ...state, stock: [...state.stock, action.payload] };
-    case 'SUBTRACT_STOCK':
-      return {
-        ...state,
-        stock: state.stock.map(s =>
-          s.id === action.payload.id ? { ...s, ...action.payload.fields } : s
-        ),
-      };
-    case 'SET_ASSEMBLIES':
-      return { ...state, assemblies: action.payload };
-    case 'ADD_ASSEMBLY':
-      return { ...state, assemblies: [action.payload, ...state.assemblies] };
-    case 'UPDATE_ASSEMBLY':
-      return {
-        ...state,
-        assemblies: state.assemblies.map(a =>
-          a.id === action.payload.id ? { ...a, ...action.payload.fields } : a
-        ),
-      };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    default:
-      return state;
+    case 'ADD_CLIENT': return { ...state, clients: [action.payload, ...state.clients] };
+    case 'UPDATE_CLIENT': return {
+      ...state, clients: state.clients.map(c => c.ci === action.payload.ci ? { ...c, ...action.payload.fields } : c),
+    };
+
+    case 'SET_EQUIPOS': return { ...state, equipos: action.payload };
+    case 'ADD_EQUIPO': return { ...state, equipos: [action.payload, ...state.equipos] };
+    case 'UPDATE_EQUIPO': return {
+      ...state, equipos: state.equipos.map(e => e.id === action.payload.id ? { ...e, ...action.payload.fields } : e),
+    };
+    
+    case 'SET_CLIENTE_EQUIPOS': return { ...state, clienteEquipos: action.payload };
+    case 'ADD_CLIENTE_EQUIPO': return {
+      ...state,
+      clienteEquipos: state.clienteEquipos.some(ce => ce.cliente_ci === action.payload.cliente_ci && ce.equipo_id === action.payload.equipo_id)
+        ? state.clienteEquipos
+        : [action.payload, ...state.clienteEquipos]
+    };
+
+    case 'SET_STOCK': return { ...state, stock: action.payload };
+    case 'ADD_STOCK': return { ...state, stock: [...state.stock, action.payload] };
+    case 'SUBTRACT_STOCK': return {
+      ...state, stock: state.stock.map(s => s.id === action.payload.id ? { ...s, ...action.payload.fields } : s),
+    };
+    
+    case 'SET_ASSEMBLIES': return { ...state, assemblies: action.payload };
+    case 'ADD_ASSEMBLY': return { ...state, assemblies: [action.payload, ...state.assemblies] };
+    case 'UPDATE_ASSEMBLY': return {
+      ...state, assemblies: state.assemblies.map(a => a.id === action.payload.id ? { ...a, ...action.payload.fields } : a),
+    };
+    
+    case 'SET_LOADING': return { ...state, loading: action.payload };
+    default: return state;
   }
 }
 
@@ -110,7 +110,7 @@ interface AppContextValue {
   dispatch: React.Dispatch<Action>;
   actions: {
     loadInitialData: () => Promise<void>;
-    createOrden: (data: Omit<OrdenTrabajo, 'id'>) => Promise<OrdenTrabajo>;
+    createOrden: (data: Omit<OrdenTrabajo, 'id' | 'equipo_id'>, equipoId?: string, nuevoEquipoData?: Omit<Equipo, 'id'>) => Promise<OrdenTrabajo>;
     updateOrden: (id: string, fields: Partial<OrdenTrabajo>) => Promise<void>;
     finalizarOrden: (id: string, piezas: OrdenTrabajo['piezas_utilizadas']) => Promise<void>;
     addStockItem: (item: Omit<StockItem, 'id'>) => Promise<StockItem>;
@@ -128,16 +128,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadInitialData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    const [ordenes, clients, stock, assemblies] = await Promise.all([
+    const [ordenes, clients, stock, assemblies, equipos, clienteEquipos] = await Promise.all([
       orderService.fetchOrdenes(),
       clientService.fetchClients(),
       stockService.fetchStock(),
       assemblyService.fetchAssemblies(),
+      equipmentService.fetchEquipos(),
+      equipmentService.fetchClienteEquipos(),
     ]);
     dispatch({ type: 'SET_ORDERS', payload: ordenes });
     dispatch({ type: 'SET_CLIENTS', payload: clients });
     dispatch({ type: 'SET_STOCK', payload: stock });
     dispatch({ type: 'SET_ASSEMBLIES', payload: assemblies });
+    dispatch({ type: 'SET_EQUIPOS', payload: equipos });
+    dispatch({ type: 'SET_CLIENTE_EQUIPOS', payload: clienteEquipos });
     dispatch({ type: 'SET_LOADING', payload: false });
   }, []);
 
@@ -145,26 +149,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadInitialData();
   }, [loadInitialData]);
 
-  const createOrden = useCallback(async (data: Omit<OrdenTrabajo, 'id'>) => {
-    const orden = await orderService.createOrden(data);
-    dispatch({ type: 'ADD_ORDER', payload: orden });
-    const equipmentName = [data.marca, data.modelo].filter(Boolean).join(" ");
-    let client = await clientService.addClientEquipment(
-      data.ci || "Sin RUT", data.nombre_cliente,
-      { name: equipmentName || "Equipo sin especificar", serial: orden.id },
-      data.estado
-    );
-    if (data.numero_celular) {
-      client = await clientService.registerClient(data.nombre_cliente, data.ci || "Sin RUT", data.numero_celular);
-    }
+  const createOrden = useCallback(async (data: Omit<OrdenTrabajo, 'id' | 'equipo_id'>, equipoId?: string, nuevoEquipoData?: Omit<Equipo, 'id'>) => {
+    // 1. Manejar Cliente
+    let client = await clientService.registerClient(data.nombre_cliente, data.ci, data.numero_celular);
     dispatch({ type: 'UPSERT_CLIENT', payload: client });
+
+    // 2. Manejar Equipo
+    let targetEquipoId = equipoId;
+    if (!targetEquipoId && nuevoEquipoData) {
+      const nuevoEquipo: Equipo = {
+        ...nuevoEquipoData,
+        id: `MT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`
+      };
+      await equipmentService.addEquipo(nuevoEquipo);
+      dispatch({ type: 'ADD_EQUIPO', payload: nuevoEquipo });
+      targetEquipoId = nuevoEquipo.id;
+    }
+
+    if (!targetEquipoId) {
+      throw new Error("Se requiere un equipo existente o datos para un equipo nuevo");
+    }
+
+    // 3. Vincular Cliente y Equipo
+    const relacion = await equipmentService.addClienteEquipo(client.ci, targetEquipoId);
+    dispatch({ type: 'ADD_CLIENTE_EQUIPO', payload: relacion });
+
+    // 4. Crear Orden
+    const ordenData: Omit<OrdenTrabajo, 'id'> = {
+      ...data,
+      equipo_id: targetEquipoId,
+      ci: client.ci, // Actualizar en la orden con el finalCi generado si corresponde
+    };
+    const orden = await orderService.createOrden(ordenData);
+    dispatch({ type: 'ADD_ORDER', payload: orden });
+
     return orden;
   }, []);
 
   const updateOrden = useCallback(async (id: string, fields: Partial<OrdenTrabajo>) => {
     await orderService.updateOrden(id, fields);
     dispatch({ type: 'UPDATE_ORDER', payload: { id, fields } });
-  }, []);
+
+    if (fields.diagnostico) {
+      const orden = state.orders.find(o => o.id === id);
+      if (orden && orden.equipo_id) {
+        const d = fields.diagnostico;
+        const especificaciones = {
+          procesador: d.procesador,
+          memoria_ram: d.memoria_ram,
+          grafica: d.grafica,
+          almacenamientos: d.almacenamientos.map(a => ({ nombre: a.nombre, capacidad: a.capacidad, letra: a.letra, estado: a.estado })),
+          bateria: d.estado_bateria || d.bateria,
+          medicion_pila: d.medicion_pila,
+          fuente_potencia: d.fuente_potencia,
+          fuente_marca: d.fuente_marca,
+        };
+        await equipmentService.updateEquipo(orden.equipo_id, { especificaciones });
+        dispatch({ type: 'UPDATE_EQUIPO', payload: { id: orden.equipo_id, fields: { especificaciones } } });
+      }
+    }
+  }, [state.orders]);
 
   const finalizarOrden = useCallback(async (id: string, piezas: OrdenTrabajo['piezas_utilizadas']) => {
     for (const p of piezas) {
@@ -176,7 +220,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const orden = await orderService.finalizarOrden(id, piezas);
     dispatch({ type: 'UPDATE_ORDER', payload: { id, fields: { estado: 'finalizado', piezas_utilizadas: piezas } } });
     dispatch({ type: 'ADD_EQUIPO_FINALIZADO', payload: orden });
-  }, []);
+
+    if (piezas && piezas.length > 0 && orden.equipo_id) {
+      const equipo = state.equipos.find(e => e.id === orden.equipo_id);
+      if (equipo && equipo.especificaciones) {
+        let nuevasSpecs = { ...equipo.especificaciones };
+        let updatedSpecs = false;
+
+        piezas.forEach(p => {
+          if (p.reemplazaA) {
+            const stockItem = state.stock.find(s => s.id === p.stockItemId);
+            const itemName = stockItem?.name || p.stockItemId;
+            
+            if (p.reemplazaA.startsWith("CPU:")) nuevasSpecs.procesador = itemName;
+            else if (p.reemplazaA.startsWith("RAM:")) nuevasSpecs.memoria_ram = itemName;
+            else if (p.reemplazaA.startsWith("GPU:")) nuevasSpecs.grafica = itemName;
+            else if (p.reemplazaA.startsWith("Batería")) nuevasSpecs.bateria = itemName;
+            else if (p.reemplazaA.startsWith("Pila")) nuevasSpecs.medicion_pila = itemName;
+            else if (p.reemplazaA.startsWith("Fuente")) {
+              nuevasSpecs.fuente_marca = itemName;
+              nuevasSpecs.fuente_potencia = "";
+            }
+            else if (p.reemplazaA.startsWith("Almacenamiento:")) {
+              const prevNombre = p.reemplazaA.replace("Almacenamiento: ", "");
+              if (nuevasSpecs.almacenamientos) {
+                const idx = nuevasSpecs.almacenamientos.findIndex(a => a.nombre === prevNombre);
+                if (idx !== -1) {
+                  nuevasSpecs.almacenamientos[idx] = { ...nuevasSpecs.almacenamientos[idx], nombre: itemName };
+                }
+              }
+            }
+            updatedSpecs = true;
+          }
+        });
+
+        if (updatedSpecs) {
+          await equipmentService.updateEquipo(orden.equipo_id, { especificaciones: nuevasSpecs });
+          dispatch({ type: 'UPDATE_EQUIPO', payload: { id: orden.equipo_id, fields: { especificaciones: nuevasSpecs } } });
+        }
+      }
+    }
+  }, [state.stock, state.equipos]);
 
   const addStockItem = useCallback(async (data: Omit<StockItem, 'id'>) => {
     const item = await stockService.addStockItem(data);
@@ -192,12 +276,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createAssembly = useCallback(async (data: Omit<Assembly, 'id'>) => {
     const assembly = await assemblyService.createAssembly(data);
     dispatch({ type: 'ADD_ASSEMBLY', payload: assembly });
-    const client = await clientService.addClientEquipment(
-      data.ci, data.client,
-      { name: data.equipment, serial: assembly.id },
-      'completed'
-    );
-    dispatch({ type: 'UPSERT_CLIENT', payload: client });
     return assembly;
   }, []);
 

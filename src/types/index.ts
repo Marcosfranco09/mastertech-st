@@ -1,15 +1,20 @@
-export type EstadoOrden = 'recepcionado' | 'diagnosticado' | 'en_espera' | 'en_proceso' | 'finalizado' | 'rechazado';
+export type EstadoOrden = 'recepcionado' | 'diagnosticado' | 'en_espera' | 'en_proceso' | 'finalizado' | 'entregado' | 'rechazado';
 
 export interface Diagnostico {
   procesador: string;
   memoria_ram: string;
   grafica: string;
-  almacenamientos: { nombre: string; estado: string }[];
+  almacenamientos: { nombre: string; capacidad?: string; letra?: string; estado: string }[];
   usuario_nombre: string;
   usuario_informacion: string;
   pico_estres_cpu: string;
   pico_estres_gpu: string;
   bateria?: string;
+  medicion_pila?: string;
+  estado_bateria?: string;
+  fuente_potencia?: string;
+  fuente_marca?: string;
+  observaciones?: string;
   solucion_propuesta: string;
 }
 
@@ -21,6 +26,7 @@ export interface Presupuesto {
 export interface PiezaUtilizada {
   stockItemId: string;
   quantity: number;
+  reemplazaA?: string;
 }
 
 export interface OrdenTrabajo {
@@ -33,6 +39,7 @@ export interface OrdenTrabajo {
   categoria: string;
   marca: string;
   modelo: string;
+  equipo_id: string;
   falla_segun_cliente: string;
   contrasena_equipo: string;
   accesorios: string;
@@ -57,6 +64,7 @@ export interface Order {
   equipment: string;
   model: string;
   serial: string;
+  equipo_id: string;
   status: OrderStatus;
   priority: Priority;
   tech: string;
@@ -64,12 +72,32 @@ export interface Order {
   issue: string;
 }
 
-export interface ClientEquipment {
-  name: string;
-  serial: string;
-  lastOrder: string;
-  lastStatus: string;
-  history: string[];
+export interface EspecificacionesEquipo {
+  procesador?: string;
+  memoria_ram?: string;
+  grafica?: string;
+  almacenamientos?: { nombre: string; capacidad?: string; letra?: string; estado: string }[];
+  bateria?: string;
+  medicion_pila?: string;
+  estado_bateria?: string;
+  fuente_potencia?: string;
+  fuente_marca?: string;
+}
+
+export interface Equipo {
+  id: string;
+  marca: string;
+  modelo: string;
+  tipo: 'pc' | 'notebook' | 'otro';
+  notas?: string;
+  especificaciones?: EspecificacionesEquipo;
+}
+
+export interface ClienteEquipo {
+  cliente_ci: string;
+  equipo_id: string;
+  fecha_registro: string;
+  es_propietario: boolean;
 }
 
 export interface Client {
@@ -77,7 +105,6 @@ export interface Client {
   ci: string;
   numero_celular: string;
   orders: number;
-  equipment: ClientEquipment[];
   notes?: string;
 }
 
