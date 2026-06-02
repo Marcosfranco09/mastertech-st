@@ -422,7 +422,7 @@ function ClientCard({ client, index }: { client: Client; index: number }) {
         whileHover={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
       >
         <div className="p-5">
-          <div className="flex items-start gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0}
+          <div className="flex items-start gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0}>
             <motion.button onClick={(e) => { e.stopPropagation(); setShowNotes(true); }}
               className="size-10 flex items-center justify-center text-sm font-bold shrink-0 rounded cursor-pointer"
               style={{ background: "var(--primary)", color: "white" }}
@@ -532,7 +532,7 @@ function EquipoCard({ equipo, index }: { equipo: Equipo; index: number }) {
         whileHover={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
       >
         <div className="p-5">
-          <div className="flex items-start gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0}
+          <div className="flex items-start gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0}>
             <div className="size-10 flex items-center justify-center text-sm rounded shrink-0" style={{ background: "rgba(0,71,171,0.08)", color: "var(--primary)" }}>
               {(() => {
                 const icon = getEquipIcon(equipo.marca);

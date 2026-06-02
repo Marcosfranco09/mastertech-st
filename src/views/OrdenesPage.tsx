@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Search, Plus, X, Camera, Trash2, ArrowLeft } from "lucide-react";
 import { useAppContext } from "@/store/AppContext";
@@ -11,7 +11,7 @@ import { Textarea } from "@/app/components/ui/textarea";
 import { Button } from "@/app/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import type { OrdenTrabajo, Diagnostico, PiezaUtilizada } from "@/types";
-import { ShutterPanel, DialogShutterBody } from "@/app/components/ShutterPanel";
+import { ShutterPanel, DialogShutterBody, DialogScrollBody } from "@/app/components/ShutterPanel";
 
 const TECNICOS = ["Oscar Gomez", "Orlando Moreno", "Marcos Franco"];
 
@@ -154,7 +154,7 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-lg font-semibold">Recepción de equipo</DialogTitle>
         </DialogHeader>
-        <DialogShutterBody panelKey={receptionShutterKey} scrollClassName="overflow-y-auto">
+        <DialogScrollBody>
         <div className="grid gap-4 py-1">
           <div className="space-y-1.5">
             <Label className="text-xs">Recepcionado por *</Label>
@@ -397,7 +397,7 @@ export function ReceptionModal({ open, onOpenChange }: { open: boolean; onOpenCh
             </div>
           </div>
         </div>
-        </DialogShutterBody>
+        </DialogScrollBody>
         <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
             Cancelar
@@ -449,7 +449,7 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-lg font-semibold">{garantia ? "Diagnóstico (Garantía)" : "Diagnóstico técnico"}</DialogTitle>
         </DialogHeader>
-        <DialogShutterBody panelKey={diagShutterKey} scrollClassName="overflow-y-auto">
+        <DialogScrollBody>
         <div className="grid gap-4 py-1">
           {!garantia && (
             <>
@@ -583,7 +583,7 @@ function DiagnosticoModal({ open, onOpenChange, onSave, esNotebook, garantia }: 
               className="text-xs h-20 resize-none" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
           </div>
         </div>
-        </DialogShutterBody>
+        </DialogScrollBody>
         <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
             Cancelar

@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "@/app/motion";
+import { cn } from "@/app/components/ui/utils";
 
 const SHUTTER_TRANSITION = { duration: 0.38, ease: [0.4, 0, 0.2, 1] as const, type: "tween" as const };
 const CONTENT_TRANSITION = { duration: 0.28, ease: [0.4, 0, 0.2, 1] as const, type: "tween" as const };
@@ -20,7 +21,7 @@ export function ShutterPanel({
   useLayoutEffect(() => {
     const el = innerRef.current;
     if (!el) return;
-    const measure = () => setHeight(el.getBoundingClientRect().height);
+    const measure = () => setHeight(el.offsetHeight);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -58,7 +59,6 @@ export function ShutterPanel({
   );
 }
 
-/** Cuerpo de modal con scroll y efecto persiana */
 export function DialogShutterBody({
   panelKey,
   children,
@@ -71,10 +71,24 @@ export function DialogShutterBody({
   scrollClassName?: string;
 }) {
   return (
-    <ShutterPanel panelKey={panelKey} className={className}>
-      <div className={scrollClassName ?? "max-h-[min(65vh,560px)] overflow-y-auto"}>
+    <ShutterPanel panelKey={panelKey} className={cn("mb-2", className)}>
+      <div className={cn("max-h-[calc(100vh-16rem)] overflow-y-auto p-4", scrollClassName)}>
         {children}
       </div>
     </ShutterPanel>
+  );
+}
+
+export function DialogScrollBody({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("max-h-[calc(100vh-16rem)] overflow-y-auto p-4 mb-2", className)}>
+      {children}
+    </div>
   );
 }
