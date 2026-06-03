@@ -12,6 +12,7 @@ import { Button } from "@/app/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import type { OrdenTrabajo, Diagnostico, PiezaUtilizada } from "@/types";
 import { ShutterPanel, DialogShutterBody, DialogScrollBody } from "@/app/components/ShutterPanel";
+import { motion } from "framer-motion";
 
 const TECNICOS = ["Oscar Gomez", "Orlando Moreno", "Marcos Franco"];
 
@@ -1145,24 +1146,28 @@ export function OrdenesPage() {
         </button>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-end justify-between border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-center gap-6 flex-wrap">
           {FILTROS.map(f => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
-              className="px-3 py-1.5 text-xs font-medium transition-all border cursor-pointer"
-              style={{
-                background: filter === f.value ? "var(--primary)" : "var(--card)",
-                color: filter === f.value ? "white" : "var(--muted-foreground)",
-                borderColor: filter === f.value ? "var(--primary)" : "var(--border)",
-              }}
+              className={`relative pb-3 text-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${filter === f.value ? "" : "text-muted-foreground hover:text-foreground"}`}
+              style={filter === f.value ? { color: "var(--foreground)" } : {}}
             >
               {f.label}
+              {filter === f.value && (
+                <motion.div
+                  layoutId="ordenesTabIndicator"
+                  className="absolute bottom-[-1px] left-0 right-0 h-[2px]"
+                  style={{ background: "var(--primary)" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
             </button>
           ))}
         </div>
-        <div className="ml-auto">
+        <div className="pb-2 pl-4">
           <div className="relative">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--muted-foreground)" }} />
             <input
