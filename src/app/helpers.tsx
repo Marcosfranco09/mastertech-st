@@ -7,8 +7,10 @@ export function isOrdenActiva(estado: EstadoOrden | string): boolean {
 }
 
 /** Visible en listados «Activas» (incluye finalizado pendiente de entrega al cliente) */
-export function isOrdenEnTaller(estado: EstadoOrden | string): boolean {
-  return estado !== "entregado" && estado !== "rechazado";
+export function isOrdenEnTaller(orden: { estado: EstadoOrden | string, equipo_retirado?: boolean }): boolean {
+  if (orden.estado === "entregado") return false;
+  if (orden.estado === "rechazado" && orden.equipo_retirado) return false;
+  return true;
 }
 
 export const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {

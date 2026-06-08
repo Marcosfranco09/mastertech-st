@@ -15,6 +15,7 @@ interface AppState {
   stock: StockItem[];
   assemblies: Assembly[];
   loading: boolean;
+  globalMonthFilter: string;
 }
 
 type Action =
@@ -38,7 +39,8 @@ type Action =
   | { type: 'SET_ASSEMBLIES'; payload: Assembly[] }
   | { type: 'ADD_ASSEMBLY'; payload: Assembly }
   | { type: 'UPDATE_ASSEMBLY'; payload: { id: string; fields: Partial<Assembly> } }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_MONTH_FILTER'; payload: string };
 
 const initialState: AppState = {
   orders: [],
@@ -49,6 +51,7 @@ const initialState: AppState = {
   stock: [],
   assemblies: [],
   loading: true,
+  globalMonthFilter: new Date().toISOString().slice(0, 7), // YYYY-MM
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -101,6 +104,7 @@ function reducer(state: AppState, action: Action): AppState {
     };
     
     case 'SET_LOADING': return { ...state, loading: action.payload };
+    case 'SET_MONTH_FILTER': return { ...state, globalMonthFilter: action.payload };
     default: return state;
   }
 }
@@ -118,6 +122,7 @@ interface AppContextValue {
     createAssembly: (data: Omit<Assembly, 'id'>) => Promise<Assembly>;
     updateAssembly: (id: string, fields: Partial<Assembly>) => Promise<void>;
     updateClient: (ci: string, fields: Partial<Client>) => Promise<void>;
+    setGlobalMonthFilter: (month: string) => void;
   };
 }
 
@@ -187,8 +192,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateOrden = useCallback(async (id: string, fields: Partial<OrdenTrabajo>) => {
-    await orderService.updateOrden(id, fields);
-    dispatch({ type: 'UPDATE_ORDER', payload: { id, fields } });
+    let finalFields = { ...fields };
+    if (fields.estado === 'entregado' && !finalFields.fecha_entrega) {
+      finalFields.fecha_entrega = new Date().toISOString();
+    }
+    await orderService.updateOrden(id, finalFields);
+    dispatch({ type: 'UPDATE_ORDER', payload: { id, fields: finalFields } });
 
     if (fields.diagnostico) {
       const orden = state.orders.find(o => o.id === id);
@@ -289,8 +298,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_CLIENT', payload: { ci, fields } });
   }, []);
 
+  const setGlobalMonthFilter = useCallback((month: string) => {
+    dispatch({ type: 'SET_MONTH_FILTER', payload: month });
+  }, []);
+
   return (
-    <AppContext.Provider value={{ state, dispatch, actions: { loadInitialData, createOrden, updateOrden, finalizarOrden, addStockItem, clearStock, createAssembly, updateAssembly, updateClient } }}>
+    <AppContext.Provider value={{ state, dispatch, actions: { loadInitialData, createOrden, updateOrden, finalizarOrden, addStockItem, clearStock, createAssembly, updateAssembly, updateClient, setGlobalMonthFilter } }}>
       {children}
     </AppContext.Provider>
   );

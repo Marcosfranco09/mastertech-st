@@ -87,7 +87,7 @@ function AssemblyDetailsModal({ assembly, open, onOpenChange }: {
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold block text-foreground">Estado de Garantía</span>
                 {isReadOnly && <span className="text-[10px] text-muted-foreground block">Información guardada (solo lectura)</span>}
-                {!isReadOnly && <span className="text-[10px] text-muted-foreground block">Marcar si este equipo ingresó bajo garantía de taller</span>}
+                {!isReadOnly && <span className="text-[10px] text-muted-foreground block">Marcar si este equipo ingresó bajo garantía de servicio técnico</span>}
               </div>
               <div className="flex items-center space-x-2">
                 {isReadOnly ? (

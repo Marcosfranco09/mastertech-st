@@ -31,6 +31,7 @@ export async function registerClient(name: string, ci: string, numero_celular?: 
     ci: finalCi,
     numero_celular: numero_celular || "",
     orders: 1,
+    fecha_registro: new Date().toISOString(),
   };
   clients = [newClient, ...clients];
   return newClient;

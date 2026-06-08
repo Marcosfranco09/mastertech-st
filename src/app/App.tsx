@@ -70,7 +70,7 @@ function AuxModals() {
           <DialogShutterBody panelKey="settings" scrollClassName="py-2">
           <div className="space-y-4">
             {[
-              { label: "Nombre del taller", placeholder: "MasterTech Gamer Store" },
+              { label: "Nombre del servicio técnico", placeholder: "MasterTech Gamer Store" },
               { label: "Dirección", placeholder: "Av. Providencia 1234" },
               { label: "Teléfono de contacto", placeholder: "+595 981 234 567" },
             ].map(({ label, placeholder }) => (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, cloneElement } from "react";
 import { useNavigate } from "react-router";
-import { ChevronDown, DollarSign, Search, ExternalLink, Pencil, Monitor, Laptop, HelpCircle } from "lucide-react";
+import { ChevronDown, DollarSign, Search, ExternalLink, Pencil, Monitor, Laptop, HelpCircle, Calendar } from "lucide-react";
 import { useAppContext } from "@/store/AppContext";
 import { EstadoBadge, StatusBadge, getEquipIcon, capitalizeWords } from "@/app/helpers";
 import { motion } from "@/app/motion";
@@ -9,6 +9,9 @@ import type { Client, Equipo, ClienteEquipo, OrdenTrabajo } from "@/types";
 import { Input } from "@/app/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { DialogShutterBody } from "@/app/components/ShutterPanel";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
 function ServiceCountBadge({ count }: { count: number }) {
   return (
@@ -602,36 +605,78 @@ function EquipoCard({ equipo, index }: { equipo: Equipo; index: number }) {
 }
 
 export function Equipment() {
-  const { state } = useAppContext();
+  const { state, actions } = useAppContext();
   const [activeTab, setActiveTab] = useState<"clientes" | "equipos">("clientes");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    state.clienteEquipos.forEach(ce => {
+      if (ce.fecha_registro) months.add(ce.fecha_registro.slice(0, 7));
+    });
+    state.clients.forEach(c => {
+      if (c.fecha_registro) months.add(c.fecha_registro.slice(0, 7));
+    });
+    const current = new Date().toISOString().slice(0, 7);
+    months.add(current);
+    return Array.from(months).sort().reverse();
+  }, [state.clienteEquipos, state.clients]);
+
   const filteredClients = useMemo(() => {
-    if (!searchQuery) return state.clients;
+    let list = state.clients;
+    if (state.globalMonthFilter !== "todos") {
+      list = list.filter(c => c.fecha_registro?.startsWith(state.globalMonthFilter));
+    }
+    if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
-    return state.clients.filter(c => {
+    return list.filter(c => {
       if (c.name.toLowerCase().includes(q) || c.ci.toLowerCase().includes(q) || c.numero_celular.includes(q)) return true;
       const equipIds = state.clienteEquipos.filter(ce => ce.cliente_ci === c.ci).map(ce => ce.equipo_id);
       const equips = state.equipos.filter(e => equipIds.includes(e.id));
       return equips.some(e => e.marca.toLowerCase().includes(q) || e.modelo.toLowerCase().includes(q) || e.id.toLowerCase().includes(q));
     });
-  }, [state.clients, state.clienteEquipos, state.equipos, searchQuery]);
+  }, [state.clients, state.clienteEquipos, state.equipos, searchQuery, state.globalMonthFilter]);
 
   const filteredEquipos = useMemo(() => {
-    if (!searchQuery) return state.equipos;
+    let list = state.equipos;
+    if (state.globalMonthFilter !== "todos") {
+      const validEquipIds = state.clienteEquipos
+         .filter(ce => ce.fecha_registro?.startsWith(state.globalMonthFilter))
+         .map(ce => ce.equipo_id);
+      list = list.filter(e => validEquipIds.includes(e.id));
+    }
+    if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
-    return state.equipos.filter(e => {
+    return list.filter(e => {
       if (e.id.toLowerCase().includes(q) || e.marca.toLowerCase().includes(q) || e.modelo.toLowerCase().includes(q) || e.tipo.toLowerCase().includes(q)) return true;
       const clientCis = state.clienteEquipos.filter(ce => ce.equipo_id === e.id).map(ce => ce.cliente_ci);
       const clients = state.clients.filter(c => clientCis.includes(c.ci));
       return clients.some(c => c.name.toLowerCase().includes(q) || c.ci.toLowerCase().includes(q));
     });
-  }, [state.equipos, state.clienteEquipos, state.clients, searchQuery]);
+  }, [state.equipos, state.clienteEquipos, state.clients, searchQuery, state.globalMonthFilter]);
 
   return (
     <div className="flex flex-col h-full bg-[var(--background)]">
       <div className="px-6 pt-6">
-        <h1 className="text-2xl font-bold tracking-tight mb-4" style={{ color: "var(--foreground)" }}>Directorio</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>Directorio</h1>
+          <div className="w-48">
+            <Select value={state.globalMonthFilter} onValueChange={actions.setGlobalMonthFilter}>
+              <SelectTrigger className="h-8 text-xs bg-card border-border">
+                <Calendar size={13} className="mr-2 opacity-70" />
+                <SelectValue placeholder="Seleccionar mes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Histórico Completo (Todos)</SelectItem>
+                {availableMonths.map(m => (
+                  <SelectItem key={m} value={m}>
+                    {format(parseISO(`${m}-01`), "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         
         <div className="flex items-end gap-6 border-b" style={{ borderColor: "var(--border)" }}>
           <div className="flex flex-1 gap-6 relative">

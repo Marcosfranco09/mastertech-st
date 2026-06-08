@@ -52,6 +52,8 @@ export interface OrdenTrabajo {
   respuesta_cliente?: 'aceptado' | 'rechazado';
   presupuesto_aceptado?: Presupuesto;
   piezas_utilizadas?: PiezaUtilizada[];
+  fecha_entrega?: string;
+  equipo_retirado?: boolean;
 }
 
 export type OrderStatus = 'diagnosis' | 'in_progress' | 'waiting_parts' | 'completed' | 'urgent';
@@ -106,6 +108,7 @@ export interface Client {
   numero_celular: string;
   orders: number;
   notes?: string;
+  fecha_registro?: string;
 }
 
 export interface StockItem {

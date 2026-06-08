@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Search, Plus, X, Camera, Trash2, ArrowLeft } from "lucide-react";
+import { Search, Plus, X, Camera, Trash2, ArrowLeft, Calendar } from "lucide-react";
 import { useAppContext } from "@/store/AppContext";
 import { EstadoBadge, capitalizeWords, isOrdenEnTaller } from "@/app/helpers";
 import { toast } from "@/app/Toast";
@@ -13,6 +13,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import type { OrdenTrabajo, Diagnostico, PiezaUtilizada } from "@/types";
 import { ShutterPanel, DialogShutterBody, DialogScrollBody } from "@/app/components/ShutterPanel";
 import { motion } from "framer-motion";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
 const TECNICOS = ["Oscar Gomez", "Orlando Moreno", "Marcos Franco"];
 
@@ -616,6 +618,8 @@ export function OrderDetailPage() {
   const [step, setStep] = useState(0);
   const [showDiagnostico, setShowDiagnostico] = useState(false);
   const [showPresupuesto, setShowPresupuesto] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
   const [showFinalizacion, setShowFinalizacion] = useState(false);
   const [presupuestoMonto, setPresupuestoMonto] = useState("");
   const [presupuestoDesc, setPresupuestoDesc] = useState("");
@@ -748,7 +752,7 @@ export function OrderDetailPage() {
           <div className="col-span-2"><span className="text-muted-foreground">Accesorios:</span> {capitalizeWords(ordenActual.accesorios || "—")}</div>
           {ordenActual.falla_segun_cliente && (<div className="col-span-2"><span className="text-muted-foreground">Falla según cliente:</span><p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.falla_segun_cliente)}</p></div>)}
           {ordenActual.solicitud_adicional && (<div className="col-span-2"><span className="text-muted-foreground">Solicitud adicional:</span><p className="mt-1 leading-relaxed" style={{ color: "var(--foreground)" }}>{capitalizeWords(ordenActual.solicitud_adicional)}</p></div>)}
-          {ordenActual.fotos.length > 0 && (<div className="col-span-2"><span className="text-muted-foreground">Fotos:</span><div className="flex flex-wrap gap-2 mt-1">{ordenActual.fotos.map((url, i) => (<img key={i} src={url} alt="" className="size-20 object-cover border rounded" style={{ borderColor: "var(--border)" }} />))}</div></div>)}
+          {ordenActual.fotos.length > 0 && (<div className="col-span-2"><span className="text-muted-foreground">Fotos:</span><div className="flex flex-wrap gap-2 mt-1">{ordenActual.fotos.map((url, i) => (<img key={i} src={url} alt="" onClick={() => { setPhotoIndex(i); setPhotoOpen(true); }} className="size-20 object-cover border rounded cursor-pointer hover:opacity-80 transition-opacity" style={{ borderColor: "var(--border)" }} />))}</div></div>)}
         </div>
       );
       case 1: {
@@ -951,6 +955,31 @@ export function OrderDetailPage() {
                 Equipo entregado
               </div>
             )}
+            {ordenActual.estado === "rechazado" && (
+              <label
+                className={`flex items-center justify-center gap-2 py-3 border-t text-sm font-semibold transition-colors ${ordenActual.equipo_retirado ? "cursor-default" : "cursor-pointer hover:bg-muted/50"}`}
+                style={{ 
+                  background: ordenActual.equipo_retirado ? "rgba(220,38,38,0.04)" : "transparent", 
+                  borderColor: "var(--border)", 
+                  color: ordenActual.equipo_retirado ? "#DC2626" : "var(--foreground)",
+                  opacity: ordenActual.equipo_retirado ? 0.9 : 1
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!ordenActual.equipo_retirado}
+                  disabled={!!ordenActual.equipo_retirado}
+                  onChange={async (e) => {
+                    if (ordenActual.equipo_retirado) return;
+                    await actions.updateOrden(ordenActual.id, { equipo_retirado: true });
+                    toast.success("Equipo marcado como devuelto al cliente");
+                  }}
+                  className={`rounded w-4 h-4 ${ordenActual.equipo_retirado ? "cursor-default" : "cursor-pointer"}`}
+                  style={{ accentColor: "#DC2626" }}
+                />
+                {ordenActual.equipo_retirado ? "Equipo devuelto al cliente" : "Marcar como devuelto al cliente"}
+              </label>
+            )}
           </div>
         </div>
       </div>
@@ -1106,6 +1135,28 @@ export function OrderDetailPage() {
           </DialogShutterBody>
         </DialogContent>
       </Dialog>
+      <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
+        <DialogContent className="max-w-4xl p-1 bg-black/95 border-none" style={{ color: "white" }}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Visor de Fotos</DialogTitle>
+          </DialogHeader>
+          {ordenActual.fotos[photoIndex] && (
+            <div className="relative flex items-center justify-center h-[80vh] w-full">
+              <img src={ordenActual.fotos[photoIndex]} alt="" className="max-w-full max-h-full object-contain" />
+              {ordenActual.fotos.length > 1 && (
+                <>
+                  <button type="button" onClick={() => setPhotoIndex((photoIndex - 1 + ordenActual.fotos.length) % ordenActual.fotos.length)} className="absolute left-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors cursor-pointer backdrop-blur-sm">
+                    <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <button type="button" onClick={() => setPhotoIndex((photoIndex + 1) % ordenActual.fotos.length)} className="absolute right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors cursor-pointer backdrop-blur-sm">
+                    <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1113,16 +1164,28 @@ export function OrderDetailPage() {
 
 
 export function OrdenesPage() {
-  const { state } = useAppContext();
+  const { state, actions } = useAppContext();
   const navigate = useNavigate();
   const [showReception, setShowReception] = useState(false);
   const [filter, setFilter] = useState("activas");
   const [q, setQ] = useState("");
 
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    state.orders.forEach(o => {
+      if (o.fecha_recepcion) months.add(o.fecha_recepcion.slice(0, 7));
+      if (o.fecha_entrega) months.add(o.fecha_entrega.slice(0, 7));
+    });
+    const current = new Date().toISOString().slice(0, 7);
+    months.add(current);
+    return Array.from(months).sort().reverse();
+  }, [state.orders]);
+
   const filtered = state.orders.filter(o => {
+    const matchMonth = state.globalMonthFilter === "todos" || o.fecha_recepcion?.startsWith(state.globalMonthFilter);
     const matchEstado =
       filter === "todas"
-      || (filter === "activas" && isOrdenEnTaller(o.estado))
+      || (filter === "activas" && isOrdenEnTaller(o))
       || o.estado === filter;
     const matchQ = !q
       || o.nombre_cliente.toLowerCase().includes(q.toLowerCase())
@@ -1130,20 +1193,38 @@ export function OrdenesPage() {
       || o.marca?.toLowerCase().includes(q.toLowerCase())
       || o.recepcionado_por.toLowerCase().includes(q.toLowerCase())
       || o.id.toLowerCase().includes(q.toLowerCase());
-    return matchEstado && matchQ;
+    return matchEstado && matchQ && matchMonth;
   });
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>Órdenes de trabajo</h1>
-        <button
-          onClick={() => setShowReception(true)}
-          className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-all hover:opacity-90"
-          style={{ background: "var(--primary)", color: "white" }}
-        >
-          <Plus size={14} /> Nueva recepción
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="w-48">
+            <Select value={state.globalMonthFilter} onValueChange={actions.setGlobalMonthFilter}>
+              <SelectTrigger className="h-8 text-xs bg-card border-border">
+                <Calendar size={13} className="mr-2 opacity-70" />
+                <SelectValue placeholder="Seleccionar mes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Histórico Completo (Todos)</SelectItem>
+                {availableMonths.map(m => (
+                  <SelectItem key={m} value={m}>
+                    {format(parseISO(`${m}-01`), "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <button
+            onClick={() => setShowReception(true)}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-all hover:opacity-90 rounded shadow-sm"
+            style={{ background: "var(--primary)", color: "white" }}
+          >
+            <Plus size={14} /> Nueva recepción
+          </button>
+        </div>
       </div>
 
       <div className="flex items-end justify-between border-b" style={{ borderColor: "var(--border)" }}>
