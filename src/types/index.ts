@@ -148,3 +148,9 @@ export interface TimelineEvent {
   type: string;
   detail: string;
 }
+
+export interface GalleryPhoto {
+  id: string;
+  dataUrl: string;
+  date: string;
+}

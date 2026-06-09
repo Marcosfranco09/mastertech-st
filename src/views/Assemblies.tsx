@@ -57,7 +57,7 @@ function AssemblyDetailsModal({ assembly, open, onOpenChange }: {
         </DialogHeader>
         <DialogShutterBody panelKey={`${localWarranty}-${isEditing}-${isReadOnly}`} scrollClassName="overflow-y-auto py-2">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 text-xs border-b pb-3" style={{ borderColor: "var(--border)" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-b pb-3" style={{ borderColor: "var(--border)" }}>
             <div><span className="text-muted-foreground block mb-0.5">Cliente:</span><span className="font-medium text-foreground">{assembly.client}</span></div>
             <div><span className="text-muted-foreground block mb-0.5">CI / RUC:</span><span className="font-mono text-foreground">{assembly.ci}</span></div>
             <div><span className="text-muted-foreground block mb-0.5">Técnico Asignado:</span><span className="font-medium text-foreground">{assembly.tech || "Sin asignar"}</span></div>
@@ -234,7 +234,7 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
         <DialogHeader className="shrink-0"><DialogTitle className="text-base font-semibold">Registrar Nuevo Ensamble</DialogTitle></DialogHeader>
         <DialogShutterBody panelKey={`${clientLocked}-${!!clientSearchQuery}`} scrollClassName="overflow-y-auto py-2">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 relative">
               <Label className="text-xs font-medium">Cliente</Label>
               <Input placeholder="Nombre completo" value={formData.client}
@@ -282,7 +282,7 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
             </div>
           </div>
           <div className="border-t my-2" style={{ borderColor: "var(--border)" }} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Procesador</Label>
               <Input placeholder="Ej. AMD Ryzen 7 5700X, Intel i5-13400..." value={formData.processor} onChange={e => setFormData({ ...formData, processor: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
@@ -292,7 +292,7 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               <Input placeholder="Ej. 16GB DDR4 3200MHz, 32GB DDR5..." value={formData.ram} onChange={e => setFormData({ ...formData, ram: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium flex items-center justify-between">
                 <span>Tarjeta Gráfica</span><span className="text-[10px] text-muted-foreground font-normal">(Opcional)</span>
@@ -304,7 +304,7 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               <Input placeholder="Ej. SSD NVMe 1TB Kingston NV2..." value={formData.storage} onChange={e => setFormData({ ...formData, storage: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Placa Madre</Label>
               <Input placeholder="Ej. ASUS TUF B550M-PLUS..." value={formData.motherboard} onChange={e => setFormData({ ...formData, motherboard: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
@@ -314,7 +314,7 @@ function NewAssemblyModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               <Input placeholder="Ej. MSI Forge 100R, Corsair 4000D..." value={formData.cabinet} onChange={e => setFormData({ ...formData, cabinet: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 col-span-2">
               <Label className="text-xs font-medium">Fuente de Alimentación</Label>
               <Input placeholder="Ej. Corsair RM750e 750W 80+ Gold..." value={formData.powerSupply} onChange={e => setFormData({ ...formData, powerSupply: e.target.value })} className="text-xs h-9" style={{ background: "var(--input)", borderColor: "var(--border)" }} />

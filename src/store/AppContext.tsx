@@ -1,10 +1,11 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
-import { OrdenTrabajo, Order, Client, StockItem, Assembly, Equipo, ClienteEquipo } from '@/types';
+import { OrdenTrabajo, Order, Client, StockItem, Assembly, Equipo, ClienteEquipo, GalleryPhoto } from '@/types';
 import * as orderService from '@/services/orderService';
 import * as stockService from '@/services/stockService';
 import * as clientService from '@/services/clientService';
 import * as assemblyService from '@/services/assemblyService';
 import * as equipmentService from '@/services/equipmentService';
+import * as galleryService from '@/services/galleryService';
 
 interface AppState {
   orders: OrdenTrabajo[];
@@ -14,6 +15,7 @@ interface AppState {
   clienteEquipos: ClienteEquipo[];
   stock: StockItem[];
   assemblies: Assembly[];
+  galleryPhotos: GalleryPhoto[];
   loading: boolean;
   globalMonthFilter: string;
 }
@@ -39,6 +41,9 @@ type Action =
   | { type: 'SET_ASSEMBLIES'; payload: Assembly[] }
   | { type: 'ADD_ASSEMBLY'; payload: Assembly }
   | { type: 'UPDATE_ASSEMBLY'; payload: { id: string; fields: Partial<Assembly> } }
+  | { type: 'SET_GALLERY_PHOTOS'; payload: GalleryPhoto[] }
+  | { type: 'ADD_GALLERY_PHOTO'; payload: GalleryPhoto }
+  | { type: 'REMOVE_GALLERY_PHOTO'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_MONTH_FILTER'; payload: string };
 
@@ -50,6 +55,7 @@ const initialState: AppState = {
   clienteEquipos: [],
   stock: [],
   assemblies: [],
+  galleryPhotos: [],
   loading: true,
   globalMonthFilter: new Date().toISOString().slice(0, 7), // YYYY-MM
 };
@@ -103,6 +109,10 @@ function reducer(state: AppState, action: Action): AppState {
       ...state, assemblies: state.assemblies.map(a => a.id === action.payload.id ? { ...a, ...action.payload.fields } : a),
     };
     
+    case 'SET_GALLERY_PHOTOS': return { ...state, galleryPhotos: action.payload };
+    case 'ADD_GALLERY_PHOTO': return { ...state, galleryPhotos: [action.payload, ...state.galleryPhotos] };
+    case 'REMOVE_GALLERY_PHOTO': return { ...state, galleryPhotos: state.galleryPhotos.filter(p => p.id !== action.payload) };
+
     case 'SET_LOADING': return { ...state, loading: action.payload };
     case 'SET_MONTH_FILTER': return { ...state, globalMonthFilter: action.payload };
     default: return state;
@@ -116,12 +126,15 @@ interface AppContextValue {
     loadInitialData: () => Promise<void>;
     createOrden: (data: Omit<OrdenTrabajo, 'id' | 'equipo_id'>, equipoId?: string, nuevoEquipoData?: Omit<Equipo, 'id'>) => Promise<OrdenTrabajo>;
     updateOrden: (id: string, fields: Partial<OrdenTrabajo>) => Promise<void>;
+    deleteOrden: (id: string) => Promise<void>;
     finalizarOrden: (id: string, piezas: OrdenTrabajo['piezas_utilizadas']) => Promise<void>;
     addStockItem: (item: Omit<StockItem, 'id'>) => Promise<StockItem>;
     clearStock: () => Promise<void>;
     createAssembly: (data: Omit<Assembly, 'id'>) => Promise<Assembly>;
     updateAssembly: (id: string, fields: Partial<Assembly>) => Promise<void>;
     updateClient: (ci: string, fields: Partial<Client>) => Promise<void>;
+    addGalleryPhoto: (dataUrl: string) => Promise<void>;
+    removeGalleryPhoto: (id: string) => Promise<void>;
     setGlobalMonthFilter: (month: string) => void;
   };
 }
@@ -133,13 +146,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadInitialData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    const [ordenes, clients, stock, assemblies, equipos, clienteEquipos] = await Promise.all([
+    const [ordenes, clients, stock, assemblies, equipos, clienteEquipos, galleryPhotos] = await Promise.all([
       orderService.fetchOrdenes(),
       clientService.fetchClients(),
       stockService.fetchStock(),
       assemblyService.fetchAssemblies(),
       equipmentService.fetchEquipos(),
       equipmentService.fetchClienteEquipos(),
+      galleryService.fetchGalleryPhotos(),
     ]);
     dispatch({ type: 'SET_ORDERS', payload: ordenes });
     dispatch({ type: 'SET_CLIENTS', payload: clients });
@@ -147,11 +161,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_ASSEMBLIES', payload: assemblies });
     dispatch({ type: 'SET_EQUIPOS', payload: equipos });
     dispatch({ type: 'SET_CLIENTE_EQUIPOS', payload: clienteEquipos });
+    dispatch({ type: 'SET_GALLERY_PHOTOS', payload: galleryPhotos });
     dispatch({ type: 'SET_LOADING', payload: false });
   }, []);
 
   useEffect(() => {
     loadInitialData();
+    const interval = setInterval(async () => {
+      const photos = await galleryService.fetchGalleryPhotos();
+      dispatch({ type: 'SET_GALLERY_PHOTOS', payload: photos });
+    }, 3000);
+    return () => clearInterval(interval);
   }, [loadInitialData]);
 
   const createOrden = useCallback(async (data: Omit<OrdenTrabajo, 'id' | 'equipo_id'>, equipoId?: string, nuevoEquipoData?: Omit<Equipo, 'id'>) => {
@@ -164,7 +184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!targetEquipoId && nuevoEquipoData) {
       const nuevoEquipo: Equipo = {
         ...nuevoEquipoData,
-        id: `MT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`
+        id: `MT-${(Math.random().toString(36).substring(2, 8)).toUpperCase()}`
       };
       await equipmentService.addEquipo(nuevoEquipo);
       dispatch({ type: 'ADD_EQUIPO', payload: nuevoEquipo });
@@ -302,8 +322,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_MONTH_FILTER', payload: month });
   }, []);
 
+  const addGalleryPhoto = useCallback(async (dataUrl: string) => {
+    const photo = await galleryService.addGalleryPhoto(dataUrl);
+    dispatch({ type: 'ADD_GALLERY_PHOTO', payload: photo });
+  }, []);
+
+  const removeGalleryPhoto = useCallback(async (id: string) => {
+    await galleryService.removeGalleryPhoto(id);
+    dispatch({ type: 'REMOVE_GALLERY_PHOTO', payload: id });
+  }, []);
+
+  const markGalleryPhotoUsed = useCallback(async (id: string) => {
+    const newUrl = await galleryService.markGalleryPhotoUsed(id);
+    dispatch({ type: 'REMOVE_GALLERY_PHOTO', payload: id });
+    return newUrl;
+  }, []);
+
+  const deleteOrden = useCallback(async (id: string) => {
+    await orderService.deleteOrden(id);
+    dispatch({ type: 'REMOVE_ORDER', payload: id });
+  }, []);
+
   return (
-    <AppContext.Provider value={{ state, dispatch, actions: { loadInitialData, createOrden, updateOrden, finalizarOrden, addStockItem, clearStock, createAssembly, updateAssembly, updateClient, setGlobalMonthFilter } }}>
+    <AppContext.Provider value={{ state, dispatch, actions: { loadInitialData, createOrden, updateOrden, deleteOrden, finalizarOrden, addStockItem, clearStock, createAssembly, updateAssembly, updateClient, addGalleryPhoto, removeGalleryPhoto, markGalleryPhotoUsed, setGlobalMonthFilter } }}>
       {children}
     </AppContext.Provider>
   );

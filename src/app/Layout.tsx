@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "@/store/AppContext";
 import { ImageWithFallback } from "@/app/components/ui/ImageWithFallback";
@@ -30,7 +30,7 @@ function getInitials(name: string) {
   return name.split(" ").map(w => w[0]).join("").toUpperCase();
 }
 
-function Sidebar() {
+function SidebarContent({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useAppContext();
@@ -53,17 +53,19 @@ function Sidebar() {
   )?.id || "dashboard";
 
   return (
-    <aside
-      className="flex flex-col w-[220px] min-h-screen shrink-0"
-      style={{ background: "var(--sidebar)" }}
-    >
-      <div className="flex items-center justify-center px-4 py-4 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
+    <div className="flex flex-col w-[220px] h-full shrink-0" style={{ background: "var(--sidebar)" }}>
+      <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: "var(--sidebar-border)" }}>
         <ImageWithFallback
           src={logoImg}
           alt="MasterTech Gamer Store"
-          className="w-full max-w-[160px] object-contain"
-          style={{ height: 64 }}
+          className="w-full max-w-[140px] object-contain"
+          style={{ height: 48 }}
         />
+        {onClose && (
+          <button onClick={onClose} className="p-1 md:hidden text-white/50 hover:text-white">
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       <motion.nav
@@ -77,7 +79,7 @@ function Sidebar() {
           return (
             <motion.div key={id} variants={sidebarItem} className="w-full relative">
               <button
-                onClick={() => navigate(path)}
+                onClick={() => { navigate(path); onClose?.(); }}
                 className="nav-item relative"
                 data-active={active ? "true" : "false"}
               >
@@ -175,11 +177,11 @@ function Sidebar() {
           )}
         </AnimatePresence>
       </div>
-    </aside>
+    </div>
   );
 }
 
-function Header({ title }: { title: string }) {
+function Header({ title, onMenuClick }: { title: string, onMenuClick: () => void }) {
   return (
     <header
       className="flex items-center justify-between px-6 h-[56px] border-b shrink-0 select-none"
@@ -191,6 +193,9 @@ function Header({ title }: { title: string }) {
       }}
     >
       <div className="flex items-center gap-2.5">
+        <button onClick={onMenuClick} className="md:hidden mr-1 p-1 hover:bg-muted rounded" style={{ color: "var(--foreground)" }}>
+          <Menu size={20} />
+        </button>
         <div className="w-1 h-3.5 rounded-full" style={{ background: "var(--primary)" }} />
         <span 
           className="text-xs uppercase tracking-widest font-semibold" 
@@ -233,15 +238,39 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
   const title = titles[location.pathname] || (location.pathname.startsWith("/ordenes") ? "Detalle de orden" : "");
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div
       className="flex h-screen w-full overflow-hidden"
       translate="no"
       style={{ fontFamily: "Inter, sans-serif", background: "var(--background)" }}
     >
-      <Sidebar />
+      <aside className="hidden md:flex flex-col w-[220px] min-h-screen shrink-0 border-r" style={{ borderColor: "var(--border)" }}>
+        <SidebarContent />
+      </aside>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/60 md:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 z-50 w-[220px] shadow-xl md:hidden"
+            >
+              <SidebarContent onClose={() => setMobileMenuOpen(false)} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header title={title} />
+        <Header title={title} onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="flex flex-1 min-h-0 overflow-hidden relative" style={{ background: "var(--background)" }}>
           <motion.div
             key={location.pathname}

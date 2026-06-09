@@ -1,32 +1,71 @@
 import { StockItem } from '@/types';
-
-const INITIAL_STOCK: StockItem[] = [];
-
-let stock = [...INITIAL_STOCK];
+import { supabase } from '@/lib/supabase';
 
 export async function fetchStock(): Promise<StockItem[]> {
-  return [...stock];
+  const { data, error } = await supabase
+    .from('stock')
+    .select('*')
+    .order('name');
+    
+  if (error) {
+    console.error('Error fetching stock:', error);
+    return [];
+  }
+  return data || [];
 }
 
 export async function clearStock(): Promise<void> {
-  stock = [];
+  const { error } = await supabase
+    .from('stock')
+    .delete()
+    .neq('id', 'dummy'); // Delete all
+    
+  if (error) {
+    console.error('Error clearing stock:', error);
+    throw error;
+  }
 }
 
 export async function addStockItem(item: Omit<StockItem, 'id'>): Promise<StockItem> {
   const newItem: StockItem = {
     ...item,
-    id: `P-${String(stock.length + 1).padStart(3, '0')}`,
+    id: `P-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
   };
-  stock = [...stock, newItem];
-  return newItem;
+  
+  const { data, error } = await supabase
+    .from('stock')
+    .insert([newItem])
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error adding stock item:', error);
+    throw error;
+  }
+  
+  return data;
 }
 
 export async function subtractStockItem(id: string, quantity: number): Promise<StockItem | null> {
-  const idx = stock.findIndex(s => s.id === id);
-  if (idx === -1) return null;
-  const item = stock[idx];
-  if (item.stock < quantity) return null;
-  const updated = { ...item, stock: item.stock - quantity };
-  stock = [...stock.slice(0, idx), updated, ...stock.slice(idx + 1)];
-  return updated;
+  // First, fetch current stock
+  const { data: current, error: fetchError } = await supabase
+    .from('stock')
+    .select('stock')
+    .eq('id', id)
+    .single();
+    
+  if (fetchError || !current) return null;
+  if (current.stock < quantity) return null;
+  
+  const newStock = current.stock - quantity;
+  
+  const { data, error } = await supabase
+    .from('stock')
+    .update({ stock: newStock })
+    .eq('id', id)
+    .select()
+    .single();
+    
+  if (error) return null;
+  return data;
 }

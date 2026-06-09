@@ -1,9 +1,17 @@
 import { Assembly } from '@/types';
-
-let assemblies: Assembly[] = [];
+import { supabase } from '@/lib/supabase';
 
 export async function fetchAssemblies(): Promise<Assembly[]> {
-  return [...assemblies];
+  const { data, error } = await supabase
+    .from('assemblies')
+    .select('*')
+    .order('date', { ascending: false });
+    
+  if (error) {
+    console.error('Error fetching assemblies:', error);
+    return [];
+  }
+  return data || [];
 }
 
 export async function createAssembly(data: Omit<Assembly, 'id'>): Promise<Assembly> {
@@ -11,13 +19,33 @@ export async function createAssembly(data: Omit<Assembly, 'id'>): Promise<Assemb
     ...data,
     id: "ENS-" + Math.floor(1000 + Math.random() * 9000),
   };
-  assemblies = [newAssembly, ...assemblies];
-  return newAssembly;
+  
+  const { data: insertedData, error } = await supabase
+    .from('assemblies')
+    .insert([newAssembly])
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error creating assembly:', error);
+    throw error;
+  }
+  
+  return insertedData;
 }
 
 export async function updateAssembly(id: string, fields: Partial<Assembly>): Promise<Assembly> {
-  const idx = assemblies.findIndex(a => a.id === id);
-  if (idx === -1) throw new Error(`Assembly ${id} not found`);
-  assemblies[idx] = { ...assemblies[idx], ...fields };
-  return assemblies[idx];
+  const { data, error } = await supabase
+    .from('assemblies')
+    .update(fields)
+    .eq('id', id)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error updating assembly:', error);
+    throw error;
+  }
+  
+  return data;
 }

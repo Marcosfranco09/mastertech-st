@@ -8,6 +8,7 @@ import { OrdenesPage, OrderDetailPage } from "@/views/OrdenesPage";
 import { Equipment } from "@/views/Equipment";
 import { Stock } from "@/views/Stock";
 import { Assemblies } from "@/views/Assemblies";
+import { GalleryView } from "@/views/GalleryView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
 import { DialogShutterBody } from "@/app/components/ShutterPanel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/app/components/ui/alert-dialog";
@@ -49,6 +50,7 @@ function AuxModals() {
   const [isAddStockOpen, setIsAddStockOpen] = useState(false);
   const [newStockForm, setNewStockForm] = useState({ name: "", category: "", stock: "", price: "" });
   const [newEqForm, setNewEqForm] = useState({ client: "", ci: "", equipment: "", serial: "" });
+  const [isSubmittingStock, setIsSubmittingStock] = useState(false);
 
   useEffect(() => {
     const h = (e: Event, setter: (v: boolean) => void) => setter(true);
@@ -169,20 +171,27 @@ function AuxModals() {
           </DialogShutterBody>
           <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setIsAddStockOpen(false)} style={{ borderColor: "var(--border)" }}>Cancelar</Button>
-            <Button onClick={async () => {
+            <Button isLoading={isSubmittingStock} onClick={async () => {
               if (!newStockForm.name.trim() || !newStockForm.stock || !newStockForm.price) { toast.info("Completa todos los campos"); return; }
-              await actions.addStockItem({
-                name: newStockForm.name.trim(),
-                category: newStockForm.category.trim() || "General",
-                stock: Number(newStockForm.stock),
-                price: Number(newStockForm.price),
-                sku: "",
-                min: 1,
-                recent: true,
-              });
-              toast.success("Pieza agregada al inventario");
-              setIsAddStockOpen(false);
-              setNewStockForm({ name:"", category:"", stock:"", price:"" });
+              setIsSubmittingStock(true);
+              try {
+                await actions.addStockItem({
+                  name: newStockForm.name.trim(),
+                  category: newStockForm.category.trim() || "General",
+                  stock: Number(newStockForm.stock),
+                  price: Number(newStockForm.price),
+                  sku: "",
+                  min: 1,
+                  recent: true,
+                });
+                toast.success("Pieza agregada al inventario");
+                setIsAddStockOpen(false);
+                setNewStockForm({ name:"", category:"", stock:"", price:"" });
+              } catch (err: any) {
+                toast.error("Error: " + err.message);
+              } finally {
+                setIsSubmittingStock(false);
+              }
             }} style={{ background: "var(--primary)", color: "white" }}>Agregar pieza</Button>
           </DialogFooter>
         </DialogContent>
@@ -194,17 +203,22 @@ function AuxModals() {
 function AppShell() {
   return (
     <BrowserRouter>
-      <AppLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/ordenes" element={<OrdenesPage />} />
-          <Route path="/ordenes/:id" element={<OrderDetailPage />} />
-          <Route path="/equipos" element={<Equipment />} />
-          <Route path="/stock" element={<Stock />} />
-          <Route path="/ensambles" element={<Assemblies />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppLayout>
+      <Routes>
+        <Route path="/galeria" element={<GalleryView />} />
+        <Route path="/*" element={
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/ordenes" element={<OrdenesPage />} />
+              <Route path="/ordenes/:id" element={<OrderDetailPage />} />
+              <Route path="/equipos" element={<Equipment />} />
+              <Route path="/stock" element={<Stock />} />
+              <Route path="/ensambles" element={<Assemblies />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AppLayout>
+        } />
+      </Routes>
     </BrowserRouter>
   );
 }

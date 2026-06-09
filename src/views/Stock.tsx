@@ -44,8 +44,9 @@ export function Stock() {
         )}
       </div>
 
-      <div className="border overflow-hidden" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-        <table className="w-full">
+      <div className="border overflow-hidden rounded" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
               {["Nombre", "Categoría", "Stock", "Estado", "Precio"].map(h => (
@@ -95,11 +96,12 @@ export function Stock() {
             })}
           </tbody>
         </table>
-        {state.stock.length === 0 && (
-          <div className="py-12 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
-            No hay piezas en stock.
-          </div>
-        )}
+          {state.stock.length === 0 && (
+            <div className="py-12 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
+              No hay piezas en stock.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

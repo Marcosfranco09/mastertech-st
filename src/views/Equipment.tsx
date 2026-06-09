@@ -68,7 +68,7 @@ function OrderCard({ orden, open, onToggle }: {
               Servicio cubierto por garantía
             </div>
           )}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
             <div><span className="text-muted-foreground">Fecha recepción:</span> {new Date(orden.fecha_recepcion).toLocaleDateString("es-ES")}</div>
             <div><span className="text-muted-foreground">Técnico:</span> {orden.recepcionado_por}</div>
             <div><span className="text-muted-foreground">Cliente:</span> {capitalizeWords(orden.nombre_cliente)}</div>
@@ -99,7 +99,7 @@ function OrderCard({ orden, open, onToggle }: {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
                     <div><span className="text-muted-foreground">CPU:</span> <span className="font-medium ml-1">{capitalizeWords(orden.diagnostico.procesador)}</span></div>
                     <div><span className="text-muted-foreground">RAM:</span> <span className="font-medium ml-1">{capitalizeWords(orden.diagnostico.memoria_ram)}</span></div>
                     <div><span className="text-muted-foreground">GPU:</span> <span className="font-medium ml-1">{capitalizeWords(orden.diagnostico.grafica)}</span></div>
@@ -232,7 +232,7 @@ function ServiceHistoryModal({ equip, open, onClose }: {
                   <div className="font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
                     <Search size={12} /> Especificaciones actuales
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
                     {equip.especificaciones.procesador && <div><span className="text-muted-foreground">CPU:</span> <span className="font-medium ml-1">{equip.especificaciones.procesador.toUpperCase()}</span></div>}
                     {equip.especificaciones.memoria_ram && <div><span className="text-muted-foreground">RAM:</span> <span className="font-medium ml-1">{equip.especificaciones.memoria_ram.toUpperCase()}</span></div>}
                     {equip.especificaciones.grafica && <div><span className="text-muted-foreground">GPU:</span> <span className="font-medium ml-1">{equip.especificaciones.grafica.toUpperCase()}</span></div>}
@@ -658,9 +658,9 @@ export function Equipment() {
   return (
     <div className="flex flex-col h-full bg-[var(--background)]">
       <div className="px-6 pt-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>Directorio</h1>
-          <div className="w-48">
+          <div className="w-full sm:w-48">
             <Select value={state.globalMonthFilter} onValueChange={actions.setGlobalMonthFilter}>
               <SelectTrigger className="h-8 text-xs bg-card border-border">
                 <Calendar size={13} className="mr-2 opacity-70" />
@@ -678,8 +678,8 @@ export function Equipment() {
           </div>
         </div>
         
-        <div className="flex items-end gap-6 border-b" style={{ borderColor: "var(--border)" }}>
-          <div className="flex flex-1 gap-6 relative">
+        <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6 border-b" style={{ borderColor: "var(--border)" }}>
+          <div className="flex flex-1 gap-6 relative w-full md:w-auto">
             <button
               onClick={() => setActiveTab("clientes")}
               className={`relative pb-3 text-sm font-semibold transition-colors flex-1 text-center cursor-pointer ${activeTab === "clientes" ? "" : "text-muted-foreground hover:text-foreground"}`}
@@ -712,7 +712,7 @@ export function Equipment() {
             </button>
           </div>
 
-          <div className="relative w-80 pb-2">
+          <div className="relative w-full md:w-80 pb-2">
             <Search className="absolute left-3 top-[calc(50%-4px)] -translate-y-1/2 size-4 text-muted-foreground z-10 pointer-events-none" />
             
             <div className="absolute inset-y-0 left-9 flex items-center pointer-events-none overflow-hidden pb-2 right-2">

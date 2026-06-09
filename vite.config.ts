@@ -1,5 +1,7 @@
 import { defineConfig } from 'vite'
 import path from 'path'
+import fs from 'fs'
+import { VitePWA } from 'vite-plugin-pwa'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
@@ -23,6 +25,13 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true
+      },
+      manifest: false
+    })
   ],
   resolve: {
     alias: {
@@ -33,4 +42,12 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        galeria: path.resolve(__dirname, 'galeria.html'),
+      },
+    },
+  },
 })

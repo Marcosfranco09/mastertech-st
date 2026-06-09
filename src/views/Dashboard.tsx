@@ -114,14 +114,14 @@ export function Dashboard() {
   }, [monthEntregados]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-base font-bold tracking-tight" style={{ color: "var(--foreground)" }}>Panel de Control</h1>
           <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>Resumen general de gestión y servicio técnico</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="w-48">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className="w-full sm:w-48">
             <Select value={filter} onValueChange={actions.setGlobalMonthFilter}>
               <SelectTrigger className="h-8 text-xs font-medium bg-card border-border shadow-sm">
                 <Calendar size={13} className="mr-2 opacity-70" />
@@ -139,7 +139,7 @@ export function Dashboard() {
           </div>
           <motion.button
             onClick={() => setShowInventory(true)}
-            className="h-8 px-3 text-xs font-medium flex items-center transition-all rounded shadow-sm border"
+            className="h-8 px-3 text-xs font-medium flex items-center justify-center sm:justify-start flex-1 sm:flex-none transition-all rounded shadow-sm border"
             style={{ background: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)" }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -148,7 +148,7 @@ export function Dashboard() {
           </motion.button>
           <motion.button
             onClick={() => setShowReception(true)}
-            className="h-8 px-3 text-xs font-medium flex items-center hover:opacity-90 transition-all rounded shadow-sm"
+            className="h-8 px-3 text-xs font-medium flex items-center justify-center sm:justify-start flex-1 sm:flex-none hover:opacity-90 transition-all rounded shadow-sm"
             style={{ background: "var(--primary)", color: "white" }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -158,7 +158,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Órdenes activas", value: activas.length, sub: "Total físico en servicio", color: "#2563EB", icon: <Activity size={15} /> },
           { label: "Equipos Ingresados", value: monthOrders.length, sub: filter === "todos" ? "Total histórico" : "Este mes", color: "#64748B", icon: <Search size={15} /> },
@@ -171,8 +171,8 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
           <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
